@@ -1,0 +1,79 @@
+#tml-help-button {
+letter-spacing:-0.1em;
+}
+
+span#tml-help-button {
+margin-left:6px;
+}
+
+#tml-help-button a {
+display:inline-block;
+}
+
+#tml-help-button svg {
+vertical-align: middle;
+margin-right:4px;
+}
+
+#tml-display {
+display: none;
+z-index:16;
+position:fixed;
+top: 2%;
+right:1%;
+font-family:"Roboto", "Lucida Grande", Verdana, Arial, sans-serif;
+font-size: 11px;
+letter-spacing:0;
+padding:14px;
+background:#fff;
+border:6px solid #000;
+border-radius:10px;
+}
+
+#tml-display h3 {
+margin:12px 0 0 0;
+padding: 0;
+font-size: 12px;
+font-weight:700;
+text-transform: uppercase;
+color: #333;
+}
+
+#tml-display p {
+padding: 0;
+margin: 0;
+font-size: 11px;
+line-height: 14px;
+color: #666;
+}
+
+#tml-display pre {
+margin:0 0 11px 0;
+padding: 0;
+font-size: 11px;
+color: #666;
+}
+
+#tml-display:target {
+ display:block; 
+}
+
+#tml-display .toolbar {
+text-align: right;
+vertical-align:center;
+padding: 4px 0;
+}
+
+#tml-display .cancel a{
+font-weight:bold;
+color: #000;
+padding: 4px;
+}
+
+#tml-display .cancel a:hover{
+background: #ddd;
+}
+
+#tml-display .cancel a:active{
+background: #ccc;
+}
