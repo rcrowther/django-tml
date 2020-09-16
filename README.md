@@ -1,7 +1,7 @@
-# TML
+# Django-ttml
 A reliable markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
 
-This app is called django-tml, but internally the module is called 'tml'.
+This app is called 'django-ttml', but internally the module is called 'tml'. It has no connection with, and different intentions to, the pypi package called [tml]{https://pypi.org/project/tml/), and it's [Github repository](https://github.com/translationexchange/tml-python). But this code has been called TML for years, in  several computer languages, and so the rename.
 
 ## Why you may not want this app
 Where people don't use [Markdown](https://www.markdownguide.org/basic-syntax/), they use [reStructuredText](https://www.writethedocs.org/guide/writing/reStructuredText/). This is the only current implementation of TML. And this version is deliberately a web/HTML tool. TML is a very flexible language, but this app will not generate academic-level citations.
@@ -26,9 +26,9 @@ There is a basic attitude for use in Django which is, if users send markup, code
 ### Install
 PyPi,
 
-    pip install django-tml
+    pip install django-ttml
 
-Or download the app code to Django.
+or download the app code to Django.
 
 If you do not need the Django integration, you do not need to install. Otherwise, declare in Django settings,
 
@@ -82,7 +82,7 @@ This, at least, demonstrates how to convert in open code.
 ### IO
 The code in 'tml/io.py' is worth mentioning. It shows how to handle the parser.
 
-The Parser is a feed parser. It does not take a 'source', it accepts a feed of lines, and needs a builder for output. The lines must be in a particular form, stripped of trailing newlines. This can be done using a io.StringIO object, which can normalise the line-ends then feed lines as chunks.
+The Parser is a feed parser. It does not take a 'source', it accepts a feed of lines, and needs a builder for output. The lines must be in a particular form, stripped of trailing newlines. This can be done using a io.StringIO object, which can normalise the line-ends, then feed the source lines as chunks.
 
 ### Escaping
 Current attitude of the support code is to trust input, but escape 'pre' formatted areas for code display. I can see cases where you may wish for more or less escaping. We shall see.
@@ -174,7 +174,7 @@ I give up. Try pasting this into a TML field,
 
     And finally, a couple of useful tricks [a(https://www.etymonline.com/) like an anchor]. 
 
-    And if you use the Prism parser, the 'pre' block is tricked into being a codeblock, and the tagname tricked into the language specifier. Like this,
+    If you use the Prism parser (or the template tag ''tml_uml_prism'), the ''pre' block is tricked into being a codeblock, and the tagname is tricked into being the language specifier. Like this,
 
     ?python
         c = a + b
@@ -191,6 +191,6 @@ Some people don't believe in doing this, for reasons I can't argue with. On the 
 
 Have a look at the uUML file for full details (of a somewhat reduced implementation). Or paste the following sentence into a textield rendered by a UML template tag,
 
-    So ''this' will generate curly quotes, as ""this" will generate curly double quotes, '---' makes an em-dash, '(c)' makes copyright, and this '110:mo' will record your temperature as running at 110 degrees.
+    So ''this' will generate curly quotes, as ""this" will generate curly double quotes, ''---' makes an em-dash, ''(c)' makes copyright, and this ''110:mo' will display your temperature as running at 110 degrees.
 
 
