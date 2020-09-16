@@ -1,0 +1,18 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "tml"
+dist-name = "django-ttml"
+author = "Robert Crowther"
+author-email = "rw.crowther@gmail.com"
+home-page = "https://github.com/rcrowther/django-tml"
+description-file = "README.md"
+classifiers = [
+    "Operating System :: OS Independent",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Framework :: Django"
+]
+

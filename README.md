@@ -1,6 +1,7 @@
 # TML
 A reliable markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
 
+This app is called django-tml, but internally the module is called 'tml'.
 
 ## Why you may not want this app
 Where people don't use [Markdown](https://www.markdownguide.org/basic-syntax/), they use [reStructuredText](https://www.writethedocs.org/guide/writing/reStructuredText/). This is the only current implementation of TML. And this version is deliberately a web/HTML tool. TML is a very flexible language, but this app will not generate academic-level citations.
