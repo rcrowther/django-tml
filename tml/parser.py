@@ -1,6 +1,12 @@
 from tml.utils import Stack
 from tml import uml
 from django.utils.html import conditional_escape
+from collections import namedtuple
+
+
+Mark = namedtuple('Mark', ['tagname', 'classname'])
+
+
 
 class ParseError(Exception):
     def __init__(self, lineno, message, data=''):
@@ -149,7 +155,7 @@ class ParagraphMarkData(MarkData):
 class AnchorMarkData(MarkData):
     def __init__(self, href, open_lineno=None):
         self.href = href
-        super().__init__('a', TargetedMarkClosure, '[', open_lineno)
+        super().__init__('a', TargetedMarkClosure, '{', open_lineno)
                 
     def open(self, b):
         b.append('<a href="{}">'.format(self.href))
@@ -183,11 +189,11 @@ class Parser:
     BlockBracketMarks = ['#', '+', '>']
     BlockListElementMarks = ['-', '~', ':']
     BlockTitleMark = '='
-    #BlockSingleMarks = ['*']
+    InlineOpenMark = '{'
+    InlineCloseMark = '}'
     
     BlockSignificantMarks = ( 
         BlockBracketMarks
-        #+ BlockSingleMarks
         )
 
     pre_markdata = PreMarkData
@@ -200,8 +206,7 @@ class Parser:
       ':' : MarkInfo('dd', ListElementOrCloseClosure, ':'),
       #'?' : MarkInfo('pre', TargetedMarkClosure, '?'),
       '>' : MarkInfo('blockquote', TargetedMarkClosure, '>'),
-      #'*' : MarkInfo('img', '*'),
-      '[' : MarkInfo('span', InlineCloseMarkOrLineEndClosure, '[')
+      InlineOpenMark : MarkInfo('span', InlineCloseMarkOrLineEndClosure, InlineOpenMark)
     }
    
     #NB Not rendered through stack, so needs no MArkData
@@ -372,7 +377,7 @@ class Parser:
         tagname, href = self.parseInlineControl()     
         if (not tagname):
             # shortcut data available
-            info = self.shortcutMarkInfo['[']
+            info = self.shortcutMarkInfo[self.InlineOpenMark]
             d = MarkData.from_generic(info, self.lineno)
         elif (tagname == 'a'):
             if (not href):
@@ -380,11 +385,11 @@ class Parser:
             d = AnchorMarkData(href, self.lineno)
         else:
             # assume generic closure
-            d = MarkData(tagname, TargetedMarkClosure, '[', self.lineno)
+            d = MarkData(tagname, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
 
     def onInlineClose(self, b):
-        self.expectedHeadPopClose(b, '[')
+        self.expectedHeadPopClose(b, self.InlineOpenMark)
 
     def processInlineContent(self, b):
         # used once set up for inline material
@@ -400,13 +405,13 @@ class Parser:
             
         p = self.cpGet()
         while (p):
-            if (p == '['):
+            if (p == self.InlineOpenMark):
                 self.onInlineOpen(b)
             
                 # slack between a tagname and the written content. Must 
                 # be one space, but may be more
                 self.skipWhiteSpace()
-            elif (p == ']'):
+            elif (p == self.InlineCloseMark):
                 self.onInlineClose(b)
             else:
                 b.append(p)
@@ -463,25 +468,34 @@ class Parser:
         self.processInlineContent(b)
         b.append('</{}>'.format(tagname))
 
+    def parse_mark_data(self, data):
+        splitC = data.split('.', 1)
+        tagname = splitC[0]
+        classname = ''
+        if (len(splitC) > 1):
+            classname = splitC[1] 
+        return Mark(tagname, classname)
+        
     def parseAndProcessBlockOpen(self, b, control):
         '''
         Create, render and push data to the closeStack. 
         '''
         # parse blockcontrol
         # Note this eats the delimiting space        
-        tagname = self.getUntilWhiteSpace()     
-           
+        mark = self.parse_mark_data(self.getUntilWhiteSpace())
+
+            
         # munch the space
         #self.cpGet()
         
         # convert shortcuts like '+' to MarkInfo, else make one
-        if (tagname in self.shortcutMarkInfo):
+        if (mark.tagname in self.shortcutMarkInfo):
             # shortcut data available
-            info = self.shortcutMarkInfo[tagname]
+            info = self.shortcutMarkInfo[mark.tagname]
             d = MarkData.from_generic(info, self.lineno)
         else:
             # assume generic closure
-            d = MarkData(tagname, TargetedMarkClosure, control, self.lineno)
+            d = MarkData(mark.tagname, TargetedMarkClosure, control, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):

@@ -9,7 +9,7 @@ from tml.parser import Parser
 # ./manage.py test tml.tests.test_parser
 class TestParser(TestCase):
     '''
-    Base tests avoid reform creation, object deletion, subclassing
+    Test that output is as expected from imput codes
     '''
     def setUp(self):
         self.parser = Parser()
@@ -55,25 +55,25 @@ class TestParser(TestCase):
                 
     def test_inline(self):
         b = []
-        self.parser.feed(b, 'Lorem [   ipsum] dolor')
+        self.parser.feed(b, 'Lorem {   ipsum} dolor')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <span>ipsum</span> dolor</p>')
 
     def test_inline_tagname(self):
         b = []
-        self.parser.feed(b, 'Lorem [cite   ipsum] dolor')
+        self.parser.feed(b, 'Lorem {cite   ipsum} dolor')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <cite>ipsum</cite> dolor</p>')
 
     def test_inline_anchor(self):
         b = []
-        self.parser.feed(b, 'Lorem [a(https://lipsum.com/) ipsum] dolor')
+        self.parser.feed(b, 'Lorem {a(https://lipsum.com/) ipsum} dolor')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <a href="https://lipsum.com/">ipsum</a> dolor</p>')
         
     def test_inline_nest(self):
         b = []
-        self.parser.feed(b, '[cite Lorem [i ipsum] dolor]')
+        self.parser.feed(b, '{cite Lorem {i ipsum} dolor}')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p><cite>Lorem <i>ipsum</i> dolor</cite></p>')
                         
