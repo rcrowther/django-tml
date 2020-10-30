@@ -4,7 +4,7 @@ from django.utils.html import conditional_escape
 from collections import namedtuple
 
 
-Mark = namedtuple('Mark', ['tagname', 'classname'])
+Mark = namedtuple('Mark', ['tagname', 'classname', 'href'])
 
 
 
@@ -301,24 +301,34 @@ class Parser:
     def parseInlineControl(self):
         '''
         Eat input from current pos until whitespace.
-        Note this is a tricky function. It eats the limiting 
+        Note this is a tricky function. It eats a limiting 
         whitespace. It also will not error, returning as much as it can
-        find, and quietly stopping at lineends.
+        find. It stops quietly at lineends.
         '''
-        tagnameB = []
+        tagclassnameB = []
         hrefB = []
         c = self.cpGet()
         while (c and not self.isWhitespace(c) and c != '('):
-            tagnameB.append(c)
+            tagclassnameB.append(c)
             c = self.cpGet()
+            
+        # now get tag and class names
+        tagclassname =  ''.join(tagclassnameB) 
+        splitC = tagclassname.split('.', 1)
+        tagname = splitC[0]
+        classname = ''
+        if (len(splitC) > 1):
+            classname = splitC[1] 
+ 
+        # Now parse hrefs
         if (c == '('):
             c = self.cpGet()
             while (c and (c != ')')):
                 hrefB.append(c)            
                 c = self.cpGet()
             #self.cpGet()  
-            self.cpSkip()          
-        return (''.join(tagnameB), ''.join(hrefB))
+            self.cpSkip()  
+        return Mark(tagname, classname, ''.join(hrefB))
 
 
     # Block stack handling
@@ -374,18 +384,18 @@ class Parser:
         
     def onInlineOpen(self, b):
         # positioned on the char after the control
-        tagname, href = self.parseInlineControl()     
-        if (not tagname):
+        mark = self.parseInlineControl()     
+        if (not mark.tagname):
             # shortcut data available
             info = self.shortcutMarkInfo[self.InlineOpenMark]
             d = MarkData.from_generic(info, self.lineno)
-        elif (tagname == 'a'):
-            if (not href):
+        elif (mark.tagname == 'a'):
+            if (not mark.href):
                 href = '#'
-            d = AnchorMarkData(href, self.lineno)
+            d = AnchorMarkData(mark.href, self.lineno)
         else:
             # assume generic closure
-            d = MarkData(tagname, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
+            d = MarkData(mark.tagname, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
 
     def onInlineClose(self, b):
@@ -474,7 +484,7 @@ class Parser:
         classname = ''
         if (len(splitC) > 1):
             classname = splitC[1] 
-        return Mark(tagname, classname)
+        return Mark(tagname, classname, '')
         
     def parseAndProcessBlockOpen(self, b, control):
         '''
