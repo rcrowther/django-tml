@@ -96,8 +96,8 @@ InlineCloseMarkOrLineEndClosure = InlineCloseMark()
 
 class MarkInfo():
     # immutable mark info
-    def __init__(self, tagname, closeType, control):
-        self.tagname = tagname 
+    def __init__(self, mark, closeType, control):
+        self.mark = mark 
         self.closeType = closeType
         self.control = control 
         
@@ -105,68 +105,85 @@ class MarkInfo():
         
 class MarkData():
     '''
-    control
-        whatever text mark triggers creating this class
     mark
-        what will be written as tag
+        a parsed representation of a mark
+    control
+        the text mark which triggered creating this class
     '''
-    def __init__(self, tagname, closeType, control, open_lineno=None):
-        self.tagname = tagname 
+    def __init__(self, mark, closeType, control, open_lineno=None):
+        self.mark = mark 
         self.closeType = closeType
         self.control = control 
         self.open_lineno = open_lineno
 
     @classmethod
-    def from_generic(class_object, info, open_lineno=None):
+    def from_generic(cls, info, open_lineno=None):
         '''Call as
            d = MarkData.from_generic(info, lineno)
         '''
-        return class_object(
-            info.tagname, 
+        return cls(
+            info.mark, 
             info.closeType, 
             info.control, 
             open_lineno=open_lineno
         )
         
     def open(self, b):
-        b.append('<{}>'.format(self.tagname))
+        if (self.mark.classname):
+            b.append('<{} class="{}">'.format(self.mark.tagname, mark.classname))
+        else:
+            b.append('<{}>'.format(self.mark.tagname))
 
     def close(self, b):
-        b.append('</{}>'.format(self.tagname))
+        b.append('</{}>'.format(self.mark.tagname))
         
     def error_str(self):
         return "control '{}' opened at line:{}".format(self.control, self.open_lineno)
 
     def __repr__(self):
-        return "MarkData(tagname='{}', closeType={}, control='{}', open_lineno={})".format(
-            self.tagname,
+        return "MarkData(mark='{}', closeType={}, control='{}', open_lineno={})".format(
+            self.mark,
             self.closeType,
             self.control, 
             self.open_lineno,
         )        
         
+#?        
 class ParagraphMarkData(MarkData):
     def __init__(self, **kwargs):
-        super().__init__('p', InlineStartOrBlockMarkClosure, '\\n', **kwargs)
-
+        super().__init__(Mark('p', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
 
 
 
 class AnchorMarkData(MarkData):
-    def __init__(self, href, open_lineno=None):
-        self.href = href
-        super().__init__('a', TargetedMarkClosure, '{', open_lineno)
-                
+    # This hold now?
+    def __init__(self, mark, open_lineno=None):
+        super().__init__(mark, TargetedMarkClosure, '{', open_lineno)
+    
+    # tagname is on mark?
     def open(self, b):
-        b.append('<a href="{}">'.format(self.href))
+        href =  '#'   
+        if (self.mark.href):
+            href = self.mark.href
+        if (self.mark.classname):
+            b.append('<a href="{}" class="{}">'.format(href, self.mark.classname))
+        else:
+            b.append('<a href="{}">'.format(href))
 
 
-
+#? figure something better, surely
 class PreMarkData(MarkData):
-    def __init__(self, tagname, open_lineno=None):
-        super().__init__('pre', TargetedMarkClosure, '?', open_lineno)
+    def __init__(self, mark, open_lineno=None):
+        super().__init__(mark, TargetedMarkClosure, '?', open_lineno)
 
-  
+    def open(self, b):
+        if (self.mark.classname):
+            b.append('<pre class="{}">'.format(self.mark.classname))
+        else:
+            b.append('<pre>')
+            
+    def close(self, b):
+        b.append('</pre>')  
 
 
 
@@ -196,17 +213,18 @@ class Parser:
         BlockBracketMarks
         )
 
+    # overridable attribute for markdata class
     pre_markdata = PreMarkData
 
     shortcutMarkInfo = {
-      '#' : MarkInfo('div', TargetedMarkClosure, '#'), 
-      '+' : MarkInfo('ul', TargetedMarkClosure, '+'), 
-      '-' : MarkInfo('li', ListElementOrCloseClosure, '-'),
-      '~' : MarkInfo('dt', ListElementOrCloseClosure, '~'),
-      ':' : MarkInfo('dd', ListElementOrCloseClosure, ':'),
+      '#' : MarkInfo(Mark('div', '', ''), TargetedMarkClosure, '#'), 
+      '+' : MarkInfo(Mark('ul', '', ''), TargetedMarkClosure, '+'), 
+      '-' : MarkInfo(Mark('li', '', ''), ListElementOrCloseClosure, '-'),
+      '~' : MarkInfo(Mark('dt', '', ''), ListElementOrCloseClosure, '~'),
+      ':' : MarkInfo(Mark('dd', '', ''), ListElementOrCloseClosure, ':'),
       #'?' : MarkInfo('pre', TargetedMarkClosure, '?'),
-      '>' : MarkInfo('blockquote', TargetedMarkClosure, '>'),
-      InlineOpenMark : MarkInfo('span', InlineCloseMarkOrLineEndClosure, InlineOpenMark)
+      '>' : MarkInfo(Mark('blockquote', '', ''), TargetedMarkClosure, '>'),
+      InlineOpenMark : MarkInfo(Mark('span', '', ''), InlineCloseMarkOrLineEndClosure, InlineOpenMark)
     }
    
     #NB Not rendered through stack, so needs no MArkData
@@ -390,12 +408,10 @@ class Parser:
             info = self.shortcutMarkInfo[self.InlineOpenMark]
             d = MarkData.from_generic(info, self.lineno)
         elif (mark.tagname == 'a'):
-            if (not mark.href):
-                href = '#'
-            d = AnchorMarkData(mark.href, self.lineno)
+            d = AnchorMarkData(mark, self.lineno)
         else:
             # assume generic closure
-            d = MarkData(mark.tagname, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
+            d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
 
     def onInlineClose(self, b):
@@ -501,7 +517,7 @@ class Parser:
             d = MarkData.from_generic(info, self.lineno)
         else:
             # assume generic closure
-            d = MarkData(mark.tagname, TargetedMarkClosure, control, self.lineno)
+            d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):
@@ -551,7 +567,7 @@ class Parser:
             # open mark
             # Note this eats the delimiting space        
             mark = self.parse_mark_data(self.getUntilWhiteSpace())
-            d = self.pre_markdata(mark.tagname, self.lineno)
+            d = self.pre_markdata(mark, self.lineno)
             self.markOpenPush(b, d)
         
     def onListElementControl(self, b, control):
@@ -572,7 +588,8 @@ class Parser:
             
             # special block, closes on inline starts and non-list blocks 
             #! put somewhere configurable
-            d = MarkData('ul', InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
+            #?
+            d = MarkData(Mark('ul', '', ''), InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
             self.markOpenPush(b, d)
             
             # update local head var
@@ -646,10 +663,11 @@ class Parser:
 
 
 class PreCodeBlockMarkData(MarkData):
-    def __init__(self, tagname, open_lineno=None):
-        super().__init__(None, TargetedMarkClosure, '?', open_lineno)
+    def __init__(self, mark, open_lineno=None):
+        super().__init__(mark, TargetedMarkClosure, '?', open_lineno)
                   
     def open(self, b):
+        #? class
         b.append('<figure><pre><code contenteditable spellcheck="false">')
 
     def close(self, b):
@@ -660,16 +678,18 @@ class CodeBlockParser(Parser):
         
         
         
+        
 class PreCodeBlockPrismMarkData(MarkData):
     '''
     Markup <pre> areas for code snippets highlighted with prism.js.
     '''
-    def __init__(self, tagname, open_lineno=None):
+    def __init__(self, mark, open_lineno=None):
         # tagname used as language indicator
-        super().__init__(tagname, TargetedMarkClosure, '?', open_lineno)
+        super().__init__(mark, TargetedMarkClosure, '?', open_lineno)
                   
     def open(self, b):
-        lang = 'none' if (self.tagname == '?') else self.tagname
+        # no classname handling
+        lang = 'none' if (self.mark.tagname == '?') else self.mark.tagname
         b.append('<figure><pre><code contenteditable spellcheck="false" class="language-{0}">'.format(lang))
 
     def close(self, b):
