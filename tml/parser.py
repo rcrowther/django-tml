@@ -216,19 +216,24 @@ class Parser:
     # overridable attribute for markdata class
     pre_markdata = PreMarkData
 
-    shortcutMarkInfo = {
-      '#' : MarkInfo(Mark('div', '', ''), TargetedMarkClosure, '#'), 
-      '+' : MarkInfo(Mark('ul', '', ''), TargetedMarkClosure, '+'), 
+    shortcutBlockTags = {
+          '#' : 'div', 
+          '+' : 'ul', 
+          '?' : 'pre',
+          '>' : 'blockquote',
+    }
+    
+    # Since no attributes currently accepted, can deliver complete 
+    # MarkInfos
+    shortcutListElementInfo = {
       '-' : MarkInfo(Mark('li', '', ''), ListElementOrCloseClosure, '-'),
       '~' : MarkInfo(Mark('dt', '', ''), ListElementOrCloseClosure, '~'),
       ':' : MarkInfo(Mark('dd', '', ''), ListElementOrCloseClosure, ':'),
-      #'?' : MarkInfo('pre', TargetedMarkClosure, '?'),
-      '>' : MarkInfo(Mark('blockquote', '', ''), TargetedMarkClosure, '>'),
-      InlineOpenMark : MarkInfo(Mark('span', '', ''), InlineCloseMarkOrLineEndClosure, InlineOpenMark)
     }
-   
-    #NB Not rendered through stack, so needs no MArkData
-    anonymousShortcutTagnameInfo = { 
+
+    #NB Not rendered through stack, or with attributes, so needs no 
+    # MarkData
+    anonymousShortcutListElementTags = { 
       '-': 'li',
       '~': 'dt',
       ':': 'dd',
@@ -403,15 +408,22 @@ class Parser:
     def onInlineOpen(self, b):
         # positioned on the char after the control
         mark = self.parseInlineControl()     
-        if (not mark.tagname):
-            # shortcut data available
-            info = self.shortcutMarkInfo[self.InlineOpenMark]
-            d = MarkData.from_generic(info, self.lineno)
-        elif (mark.tagname == 'a'):
+        if (mark.tagname == 'a'):
             d = AnchorMarkData(mark, self.lineno)
         else:
+            if (not mark.tagname):
+                mark = Mark('span', mark.classname, '')
             # assume generic closure
-            d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
+            d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)                        
+        # if (not mark.tagname):
+            # # shortcut data available
+            # info = self.shortcutMarkInfo[self.InlineOpenMark]
+            # d = MarkData.from_generic(info, self.lineno)
+        # elif (mark.tagname == 'a'):
+            # d = AnchorMarkData(mark, self.lineno)
+        # else:
+            # # assume generic closure
+            # d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
 
     def onInlineClose(self, b):
@@ -509,15 +521,19 @@ class Parser:
         # parse blockcontrol
         # Note this eats the delimiting space        
         mark = self.parse_mark_data(self.getUntilWhiteSpace())
+        if (mark.tagname in self.shortcutBlockTags):
+            mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '')
+
+        d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
         
-        # convert shortcuts like '+' to MarkInfo, else make one
-        if (mark.tagname in self.shortcutMarkInfo):
-            # shortcut data available
-            info = self.shortcutMarkInfo[mark.tagname]
-            d = MarkData.from_generic(info, self.lineno)
-        else:
-            # assume generic closure
-            d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
+        # # convert shortcuts like '+' to MarkInfo, else make one
+        # if (mark.tagname in self.shortcutMarkInfo):
+            # # shortcut data available
+            # info = self.shortcutMarkInfo[mark.tagname]
+            # d = MarkData.from_generic(info, self.lineno)
+        # else:
+            # # assume generic closure
+            # d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):
@@ -602,12 +618,13 @@ class Parser:
         # test the head/surrounding block for special anonymous closure
         if (e and e.closeType == InlineStartOrNonListBlockClosure):
             # an anonymous list
-            tagname = self.anonymousShortcutTagnameInfo[control]
+            tagname = self.anonymousShortcutListElementTags[control]
             b.append('<{}><p>'.format(tagname) )
             self.processInlineContent(b)
             b.append('</p></{}>'.format(tagname))
         else:
-            info = self.shortcutMarkInfo[control]
+            #info = self.shortcutMarkInfo[control]
+            info = self.shortcutListElementInfo[control]
             d = MarkData.from_generic(info, self.lineno)
             self.markOpenPush(b, d)
             self.onPostBlockInlineContent(b)
