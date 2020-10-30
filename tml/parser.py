@@ -493,10 +493,6 @@ class Parser:
         # parse blockcontrol
         # Note this eats the delimiting space        
         mark = self.parse_mark_data(self.getUntilWhiteSpace())
-
-            
-        # munch the space
-        #self.cpGet()
         
         # convert shortcuts like '+' to MarkInfo, else make one
         if (mark.tagname in self.shortcutMarkInfo):
@@ -553,16 +549,16 @@ class Parser:
             self.inEscape = True
                 
             # open mark
-            #self.parseAndProcessBlockOpen(b, control)
-            tagname = self.getUntilWhiteSpace()  
-            d = self.pre_markdata(tagname, self.lineno)
+            # Note this eats the delimiting space        
+            mark = self.parse_mark_data(self.getUntilWhiteSpace())
+            d = self.pre_markdata(mark.tagname, self.lineno)
             self.markOpenPush(b, d)
         
     def onListElementControl(self, b, control):
         # List element hard-left controls arrive here.
         # The position is after the control
         # only need one control, no parsing
-        # The contol is skipped.
+        # The control is skipped.
 
         # close all self-closing blocks, includes previous list 
         # elements and inline content
@@ -615,7 +611,7 @@ class Parser:
         elif (first_char in self.BlockSignificantMarks):
             self.onBlockControl(b, self.cpGet())
         elif (first_char == '='):
-           self.onHeadlineControl(b) 
+           self.onHeadlineControl(b)
         elif (first_char in self.BlockListElementMarks):
             self.onListElementControl(b, self.cpGet())
         elif (first_char == '?'):
@@ -626,10 +622,10 @@ class Parser:
             if (not self.inEscape):
                 self.onInlineStart(b)
             else:
-                # write in the line, no parsing
+                # Escaped. Write in the line, no parsing
                 b.append(conditional_escape(self.line))
                 
-                # append what would be there (but TML makes space, usually)
+                # append what would be there (but TML removes, usually)
                 b.append('\n')                 
         
     def close(self, b):
