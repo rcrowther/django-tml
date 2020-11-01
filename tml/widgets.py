@@ -29,7 +29,7 @@ text= (
 "       unformatted\n"
 "   ?\n\n"
 "INLINE-LEVEL (in text)\n"
-"   #{link address} link text#\n"
+"   {a(link address) link text}\n"
 )
 
 html = (
