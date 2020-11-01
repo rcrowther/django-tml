@@ -7,9 +7,9 @@ from tml.parser import Parser
 
 
 # ./manage.py test tml.tests.test_parser
-class TestParser(TestCase):
+class TestParserLineHandling(TestCase):
     '''
-    Test that output is as expected from imput codes
+    Test that handles lines and paragraphing
     '''
     def setUp(self):
         self.parser = Parser()
@@ -52,6 +52,14 @@ class TestParser(TestCase):
         self.parser.feed(b, 'o')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>L</p><p>o</p>')
+
+
+class TestParserInlineCodes(TestCase):
+    '''
+    Test that output is as expected from imput codes
+    '''
+    def setUp(self):
+        self.parser = Parser()
                 
     def test_inline(self):
         b = []
@@ -65,6 +73,12 @@ class TestParser(TestCase):
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <cite>ipsum</cite> dolor</p>')
 
+    def test_inline_classname(self):
+        b = []
+        self.parser.feed(b, 'Lorem {span.price   ipsum} dolor')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<p>Lorem <span class="price">ipsum</span> dolor</p>')
+
     def test_inline_anchor(self):
         b = []
         self.parser.feed(b, 'Lorem {a(https://lipsum.com/) ipsum} dolor')
@@ -76,35 +90,48 @@ class TestParser(TestCase):
         self.parser.feed(b, '{cite Lorem {i ipsum} dolor}')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p><cite>Lorem <i>ipsum</i> dolor</cite></p>')
-                        
+
+
+
+class TestParserStruvturalCodes(TestCase):
+    '''
+    Test that output is as expected from imput codes
+    '''
+    def setUp(self):
+        self.parser = Parser()
+                                
     def test_headline(self):
         b = []
         self.parser.feed(b, '==== Lorem')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<h4>Lorem</h4>')
         
-    # def test_tabarea(self):
-        # b = []
-        # self.parser.feed(b, '    Lorem ipsum dolor')
-        # self.parser.close(b)
-        # self.assertEqual(''.join(b), '<pre><code>Lorem ipsum dolor\n</code></pre>')
+        
+        
+    def test_block(self):
+        b = []
+        self.parser.feed(b, '##')
+        self.parser.feed(b, 'Lorem ipsum dolor')
+        self.parser.feed(b, '#')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<div><p>Lorem ipsum dolor</p></div>')
 
-    # def test_tabarea_multi(self):
-        # b = []
-        # self.parser.feed(b, '    Lorem')
-        # self.parser.feed(b, '      ipsum')
-        # self.parser.feed(b, '     dolor')
-        # self.parser.close(b)
-        # self.assertEqual(''.join(b), '<pre><code>Lorem\n  ipsum\n dolor\n</code></pre>')
+    def test_block_tagname(self):
+        b = []
+        self.parser.feed(b, '#article')
+        self.parser.feed(b, 'Lorem ipsum dolor')
+        self.parser.feed(b, '#')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<article><p>Lorem ipsum dolor</p></article>')
 
-    # def test_tabarea_context(self):
-        # b = []
-        # self.parser.feed(b, 's')
-        # self.parser.feed(b, '    Lorem ipsum dolor')
-        # self.parser.feed(b, 'e')
-        # self.parser.close(b)
-        # self.assertEqual(''.join(b), '<p>s</p><pre><code>Lorem ipsum dolor\n</code></pre><p>e</p>')
-
+    def test_block_classname(self):
+        b = []
+        self.parser.feed(b, '##.warning')
+        self.parser.feed(b, 'Lorem ipsum dolor')
+        self.parser.feed(b, '#')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<div class="warning"><p>Lorem ipsum dolor</p></div>')
+        
     def test_escape(self):
         b = []
         self.parser.feed(b, '??')

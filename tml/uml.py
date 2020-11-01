@@ -48,12 +48,12 @@ def group(stringpattern):
     
 doubleQuoteSP = r'""?'
 singleQuoteSP = r"''?"
-guillemetOpenSP = r"\<\<"
+guillemetOpenSP = r"<<"
 
 #NB the 'not newline' is here because it clashes with TML blockquote 
 # open. This assumes UML runs before TML (or anything else), but 
 # harmless if not.
-guillemetCloseSP = r"[^\n]>>"
+guillemetCloseSP = r">>"
 quoteSP = orCat(
     singleQuoteSP, 
     doubleQuoteSP, 

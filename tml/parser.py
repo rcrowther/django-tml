@@ -130,7 +130,7 @@ class MarkData():
         
     def open(self, b):
         if (self.mark.classname):
-            b.append('<{} class="{}">'.format(self.mark.tagname, mark.classname))
+            b.append('<{} class="{}">'.format(self.mark.tagname, self.mark.classname))
         else:
             b.append('<{}>'.format(self.mark.tagname))
 
@@ -241,6 +241,7 @@ class Parser:
         
     #! uml should go aftretr TML, probably?
     def __init__(self, uml=False):
+        self.inlineB = []
         self.reset(uml=uml)
 
     def reset(self, uml=False):
@@ -414,46 +415,54 @@ class Parser:
             if (not mark.tagname):
                 mark = Mark('span', mark.classname, '')
             # assume generic closure
-            d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)                        
-        # if (not mark.tagname):
-            # # shortcut data available
-            # info = self.shortcutMarkInfo[self.InlineOpenMark]
-            # d = MarkData.from_generic(info, self.lineno)
-        # elif (mark.tagname == 'a'):
-            # d = AnchorMarkData(mark, self.lineno)
-        # else:
-            # # assume generic closure
-            # d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
+            d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
 
     def onInlineClose(self, b):
         self.expectedHeadPopClose(b, self.InlineOpenMark)
 
-    def processInlineContent(self, b):
+    def inlineBuilderWrite(self, b):
+        l = ''.join(self.inlineB)
+        if (self.uml):
+            l = uml.all(l)
+        b.append(l)
+        self.inlineB = []
+                
+    def processInlineContent(self, b):        
         # used once set up for inline material
         self.skipWhiteSpace()
-        if (self.uml):
-            # We are beyond block tags, with only inlines to
-            # consider.
-            # Slice the line, as UML may tinker with overall length
-            # and this ensures our start pos.
-            self.line = uml.all(self.line[self.linepos:])
-            self.linelen = len(self.line)
-            self.linepos = 0
+        # Cute, but need to skip inline marks too
+        # if (self.uml):
+            # # We are beyond block tags, with only inlines to
+            # # consider.
+            # # Slice the line, as UML may tinker with overall length
+            # # and this ensures our start pos.
+            # self.line = uml.all(self.line[self.linepos:])
+            # self.linelen = len(self.line)
+            # self.linepos = 0
             
-        p = self.cpGet()
-        while (p):
-            if (p == self.InlineOpenMark):
+        cp = self.cpGet()
+
+        while (cp):
+            if (cp == self.InlineOpenMark):
+                self.inlineBuilderWrite(b)
+                
+                # Process the mark
                 self.onInlineOpen(b)
             
                 # slack between a tagname and the written content. Must 
                 # be one space, but may be more
                 self.skipWhiteSpace()
-            elif (p == self.InlineCloseMark):
+            elif (cp == self.InlineCloseMark):
+                self.inlineBuilderWrite(b)
                 self.onInlineClose(b)
             else:
-                b.append(p)
-            p = self.cpGet()
+                self.inlineB.append(cp)
+                #b.append(cp)
+            cp = self.cpGet()
+            
+        # write anything left
+        self.inlineBuilderWrite(b)
                             
     def paragraphOpenPush(self, b):
         markData = ParagraphMarkData(open_lineno=self.lineno)
@@ -490,7 +499,8 @@ class Parser:
             
             
     # block level
-
+    
+    #? like anonymouse list items
     def onHeadlineControl(self, b):
         # It's a non-list element block
         # open or close, this is the end of phrase content.
@@ -523,17 +533,7 @@ class Parser:
         mark = self.parse_mark_data(self.getUntilWhiteSpace())
         if (mark.tagname in self.shortcutBlockTags):
             mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '')
-
         d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
-        
-        # # convert shortcuts like '+' to MarkInfo, else make one
-        # if (mark.tagname in self.shortcutMarkInfo):
-            # # shortcut data available
-            # info = self.shortcutMarkInfo[mark.tagname]
-            # d = MarkData.from_generic(info, self.lineno)
-        # else:
-            # # assume generic closure
-            # d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):
@@ -623,7 +623,6 @@ class Parser:
             self.processInlineContent(b)
             b.append('</p></{}>'.format(tagname))
         else:
-            #info = self.shortcutMarkInfo[control]
             info = self.shortcutListElementInfo[control]
             d = MarkData.from_generic(info, self.lineno)
             self.markOpenPush(b, d)
