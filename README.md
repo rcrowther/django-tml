@@ -1,4 +1,6 @@
 # Django-ttml
+> :warning: **If you have previous versions in use** After some exercise, django-tml is experimenting with a major API change. Version 0.6.0 changes the inline delimiting marks from boxquotes to TeX-like curly quotes.
+
 A reliable markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
 
 This app is called 'django-ttml', but internally the module is called 'tml'. It has no connection with, and different intentions to, the pypi package called [tml]{https://pypi.org/project/tml/), and it's [Github repository](https://github.com/translationexchange/tml-python). But this code has been called TML for years, in  several computer languages, and so the rename.
@@ -58,7 +60,9 @@ This runs the HTML generation of TML, followed by the Unicode conversion of UML,
 
      {{ page.text|uml_tml }}
 
-This runs the TML and UML converters, and converts 'pre' areas into codeblocks configured for the code highlighter [prismjs](https://prismjs.com/),
+See [UML/TML integration](uml/tml-integration) for a description.
+
+The next tag runs the TML and UML converters, and converts 'pre' areas into codeblocks configured for the code highlighter [prismjs](https://prismjs.com/),
 
      {{ page.text|tml_uml_prism }}
 
@@ -132,11 +136,21 @@ There are shortcuts made by repeating the control code,
 
 There is also an inline tag. This can also be followed by a tagname, The tagname must be followed by a space or spaces to the enclosed text. This 'inline' control corresponds to HTML 'phrase content' tags,
  
-    So [cite this is inside] a citation tag.
+    So {cite this is inside} a citation tag.
 
 There is a shortcut made by omitting the control code,
 
-    So [ this is inside a span] followed by other text
+    So { this is inside a span} followed by other text
+
+The tagname can be followed with a full-stop/period, text after that is used for a classname,
+
+    ##.warning
+    This is inside a div
+    #
+
+renders,
+
+    <div class="warning"><p>Lorem ipsum dolor</p></div>
 
 I give up. Try pasting this into a TML field,
 
@@ -172,7 +186,7 @@ I give up. Try pasting this into a TML field,
     - item 2
     - item 3
 
-    And finally, a couple of useful tricks [a(https://www.etymonline.com/) like an anchor]. 
+    And finally, a couple of useful tricks [a(https://www.etymonline.com/) here is an anchor]. 
 
     If you use the Prism parser (or the template tag ''tml_uml_prism'), the ''pre' block is tricked into being a codeblock, and the tagname is tricked into being the language specifier. Like this,
 
@@ -180,7 +194,7 @@ I give up. Try pasting this into a TML field,
         c = a + b
     ?
 
-    You do neet to link the webpage to the [a(https://prismjs.com/) prismjs] code to make the code in the tags highlight.
+    To make code rendering in ''pre' blocks highlight you neet to link the webpage to the [a(https://prismjs.com/) prismjs] code.
     #
 
 
@@ -189,8 +203,20 @@ UML is a small set of conversions from keyboard-accessible codepoint sequences i
 
 Some people don't believe in doing this, for reasons I can't argue with. On the other hand, 19 out of 20 computer users can't find a copyright symbol. That's my excuse.
 
-Have a look at the uUML file for full details (of a somewhat reduced implementation). Or paste the following sentence into a textield rendered by a UML template tag,
+Have a look at the UML file for the details (of a somewhat reduced implementation). Or paste the following sentence into a textield rendered by a UML template tag,
+
 
     So ''this' will generate curly quotes, as ""this" will generate curly double quotes, ''---' makes an em-dash, ''(c)' makes copyright, and this ''110:mo' will display your temperature as running at 110 degrees.
 
+### UML/TML integration
+UML code stands alone. However, you may notice that in the templatetags UML is integrated into the TML parser,
 
+    {% load tml %}
+
+    <article>
+        {{ article.text|tml_uml }}
+    </article>
+
+If you look at the parser code, there's a paremeter to enable UML. Is that a convenience?
+
+No. The TML parser integrates UML so UML is never applied to TML codes. This is useful. If UML is applied to text generally, it may do unintended conversions to URLs or TML codes. Running UML after TML (or any other text processing) is risky too, it may do unintended conversions to the generated HTML. But the integrated UML only converts free text.

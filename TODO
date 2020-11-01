@@ -1,0 +1,5 @@
+Signals may be better named by what they do, ''ClosePhraseContent' ''CloseParagraph', 'CloseInlineAndBlock'?
+What would recievers on closures be then? A type? ''PhraseContent'?
+This implies the multiplicity is carried in the signal, inverse of current situation. 
+An anonymous list is a kind of paragraph, with sub elements. Formal statement?
+

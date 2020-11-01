@@ -94,14 +94,6 @@ class InlineCloseMark():
 InlineCloseMarkOrLineEndClosure = InlineCloseMark()
     
 
-class MarkInfo():
-    # immutable mark info
-    def __init__(self, mark, closeType, control):
-        self.mark = mark 
-        self.closeType = closeType
-        self.control = control 
-        
-        
         
 class MarkData():
     '''
@@ -115,18 +107,6 @@ class MarkData():
         self.closeType = closeType
         self.control = control 
         self.open_lineno = open_lineno
-
-    @classmethod
-    def from_generic(cls, info, open_lineno=None):
-        '''Call as
-           d = MarkData.from_generic(info, lineno)
-        '''
-        return cls(
-            info.mark, 
-            info.closeType, 
-            info.control, 
-            open_lineno=open_lineno
-        )
         
     def open(self, b):
         if (self.mark.classname):
@@ -222,18 +202,10 @@ class Parser:
           '?' : 'pre',
           '>' : 'blockquote',
     }
-    
-    # Since no attributes currently accepted, can deliver complete 
-    # MarkInfos
-    shortcutListElementInfo = {
-      '-' : MarkInfo(Mark('li', '', ''), ListElementOrCloseClosure, '-'),
-      '~' : MarkInfo(Mark('dt', '', ''), ListElementOrCloseClosure, '~'),
-      ':' : MarkInfo(Mark('dd', '', ''), ListElementOrCloseClosure, ':'),
-    }
 
     #NB Not rendered through stack, or with attributes, so needs no 
     # MarkData
-    anonymousShortcutListElementTags = { 
+    listElementTags = { 
       '-': 'li',
       '~': 'dt',
       ':': 'dd',
@@ -617,14 +589,16 @@ class Parser:
 
         # test the head/surrounding block for special anonymous closure
         if (e and e.closeType == InlineStartOrNonListBlockClosure):
-            # an anonymous list
-            tagname = self.anonymousShortcutListElementTags[control]
+            # an anonymous list element
+            tagname = self.listElementTags[control]
             b.append('<{}><p>'.format(tagname) )
             self.processInlineContent(b)
             b.append('</p></{}>'.format(tagname))
         else:
-            info = self.shortcutListElementInfo[control]
-            d = MarkData.from_generic(info, self.lineno)
+            # handled as block-level tag
+            tagname = self.listElementTags[control]
+            d = MarkData(Mark(tagname, '', ''), ListElementOrCloseClosure, control, self.lineno)
+
             self.markOpenPush(b, d)
             self.onPostBlockInlineContent(b)
 
