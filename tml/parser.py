@@ -302,7 +302,7 @@ class Parser:
             c = self.cpPeek()
         return c
 
-    def parseInlineControl(self):
+    def parseAttributes(self):
         '''
         Parse attributes inside an inline tag
         Starts after the control.
@@ -396,7 +396,7 @@ class Parser:
         Start is the control cp
         end is past the delimiter, first non-whitespace or line-end.
         '''
-        mark = self.parseInlineControl()     
+        mark = self.parseAttributes()     
         if (mark.tagname == 'a'):
             d = AnchorMarkData(mark, self.lineno)
         else:
@@ -516,19 +516,7 @@ class Parser:
         b.append('<{}>'.format(tagname) )
         self.processInlineContent(b)
         b.append('</{}>'.format(tagname))
-
-    def parse_mark_data(self):
-        '''
-        Finishes on delimiting whitespace
-        '''
-        data = self.getUntilWhiteSpace()
-        splitC = data.split('.', 1)
-        tagname = splitC[0]
-        classname = ''
-        if (len(splitC) > 1):
-            classname = splitC[1] 
-        return Mark(tagname, classname, '', '')
-        
+    
     def parseAndProcessBlockOpen(self, b, control):
         '''
         Parse blockcontrol open
@@ -538,7 +526,7 @@ class Parser:
         '''
         # parse blockcontrol
         # Note this finishes on the delimiting space        
-        mark = self.parse_mark_data()
+        mark = self.parseAttributes()
         if (mark.tagname in self.shortcutBlockTags):
             mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '', '')
         d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
@@ -595,7 +583,7 @@ class Parser:
                 
             # open mark
             # Note this eats the delimiting space        
-            mark = self.parse_mark_data()
+            mark = self.parseAttributes()
             d = self.pre_markdata(mark, self.lineno)
             self.markOpenPush(b, d)
         
