@@ -4,7 +4,7 @@ from django.utils.html import conditional_escape
 from collections import namedtuple
 
 
-Mark = namedtuple('Mark', ['tagname', 'classname', 'href'])
+Mark = namedtuple('Mark', ['tagname', 'classname', 'href', 'text'])
 
 
 
@@ -131,7 +131,7 @@ class MarkData():
 #?        
 class ParagraphMarkData(MarkData):
     def __init__(self, **kwargs):
-        super().__init__(Mark('p', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
+        super().__init__(Mark('p', '', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
 
 
 
@@ -211,7 +211,7 @@ class Parser:
       ':': 'dd',
     }
         
-    #! uml should go aftretr TML, probably?
+
     def __init__(self, uml=False):
         self.inlineB = []
         self.reset(uml=uml)
@@ -244,10 +244,11 @@ class Parser:
                 
     def cpGet(self):
         '''
-        Get a char from the stored line.
+        Get a copdepoint from the stored line.
         A quiet function that throws no errors
+        Increments the lineposition.
         return
-            A char. if at lineend, None
+            A codepoint. if at lineend, None
         '''
         r = None
         if (self.linepos < self.linelen):
@@ -256,6 +257,13 @@ class Parser:
         return r
 
     def cpPeek(self):
+        '''
+        Get a copdepoint from the stored line.
+        A quiet function that throws no errors
+        Will not move the lineposition.
+        return
+            A codepoint. if at lineend, None
+        '''
         r = None
         if (self.linepos < self.linelen):
             r = self.line[self.linepos]
@@ -296,15 +304,16 @@ class Parser:
 
     def parseInlineControl(self):
         '''
-        Eat input from current pos until whitespace.
-        Note this is a tricky function. It eats a limiting 
-        whitespace. It also will not error, returning as much as it can
-        find. It stops quietly at lineends.
+        Parse attributes inside an inline tag
+        Starts after the control.
+        Ends beyond delimiter, either whitespace, linend or ')'
+        This is a quiet function.
         '''
         tagclassnameB = []
         hrefB = []
+        textB = []
         c = self.cpGet()
-        while (c and not self.isWhitespace(c) and c != '('):
+        while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
             tagclassnameB.append(c)
             c = self.cpGet()
             
@@ -316,15 +325,19 @@ class Parser:
         if (len(splitC) > 1):
             classname = splitC[1] 
  
-        # Now parse hrefs
+        # Now parse href
         if (c == '('):
             c = self.cpGet()
             while (c and (c != ')')):
                 hrefB.append(c)            
-                c = self.cpGet()
-            #self.cpGet()  
-            self.cpSkip()  
-        return Mark(tagname, classname, ''.join(hrefB))
+                c = self.cpGet() 
+        # ...and text
+        if (c == '"'):
+            c = self.cpGet()
+            while (c and (c != '"')):
+                textB.append(c)            
+                c = self.cpGet()                 
+        return Mark(tagname, classname, ''.join(hrefB), ''.join(textB))
 
 
     # Block stack handling
@@ -379,20 +392,35 @@ class Parser:
     # inline
         
     def onInlineOpen(self, b):
-        # positioned on the char after the control
+        '''
+        Start is the control cp
+        end is past the delimiter, first non-whitespace or line-end.
+        '''
         mark = self.parseInlineControl()     
         if (mark.tagname == 'a'):
             d = AnchorMarkData(mark, self.lineno)
         else:
             if (not mark.tagname):
-                mark = Mark('span', mark.classname, '')
+                mark = Mark('span', mark.classname, '', '')
             # assume generic closure
             d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
-
+        
+        # slack between a tagname and the written content
+        self.skipWhiteSpace()
+                
+        # And now a trick, though it is semantically consistent.
+        if (mark.tagname == 'a' and self.cpPeek() == self.InlineCloseMark):
+            # The open tag is written, the closure pushed.
+            # but, if it's an anchor, and the next cp is an inline close
+            # we have an anchor with no content, not even space.
+            # in which case, we write the href to output, as anchor 
+            # content
+            b.extend(mark.href)
+            
     def onInlineClose(self, b):
         self.expectedHeadPopClose(b, self.InlineOpenMark)
-
+        
     def inlineBuilderWrite(self, b):
         l = ''.join(self.inlineB)
         if (self.uml):
@@ -400,37 +428,31 @@ class Parser:
         b.append(l)
         self.inlineB = []
                 
-    def processInlineContent(self, b):        
-        # used once set up for inline material
-        self.skipWhiteSpace()
-        # Cute, but need to skip inline marks too
-        # if (self.uml):
-            # # We are beyond block tags, with only inlines to
-            # # consider.
-            # # Slice the line, as UML may tinker with overall length
-            # # and this ensures our start pos.
-            # self.line = uml.all(self.line[self.linepos:])
-            # self.linelen = len(self.line)
-            # self.linepos = 0
-            
+    def processInlineContent(self, b):
+        # Basic attitude is, any code that calls this should setup 
+        # linepos on the first character on the content. This 
+        # method makes no attempt to guess or compensate for where
+        # that position is.   For example, it will not skip whitespace.    
+        #self.skipWhiteSpace()
         cp = self.cpGet()
-
         while (cp):
             if (cp == self.InlineOpenMark):
                 self.inlineBuilderWrite(b)
                 
                 # Process the mark
                 self.onInlineOpen(b)
-            
-                # slack between a tagname and the written content. Must 
-                # be one space, but may be more
-                self.skipWhiteSpace()
-            elif (cp == self.InlineCloseMark):
+                
+                # Now on a new cp. So we test from new...
+                cp = self.cpGet()
+                continue
+            if (cp == self.InlineCloseMark):
                 self.inlineBuilderWrite(b)
                 self.onInlineClose(b)
-            else:
-                self.inlineB.append(cp)
-                #b.append(cp)
+                
+                # Now on a new cp. So we test from new...
+                cp = self.cpGet()
+                continue
+            self.inlineB.append(cp)
             cp = self.cpGet()
             
         # write anything left
@@ -456,8 +478,10 @@ class Parser:
             self.processInlineContent(b)
                                     
     def onInlineStart(self, b):
-        # used at the start of non-block lines.
-        # See also onPostBlockInlineContent()
+        '''
+        Start of non-block line.
+        See also onPostBlockInlineContent()
+        '''
         if (not self.inPara):
             # close anything reacting to this
             self.typeMatchPopClose(b, InlineStartSignal)
@@ -483,32 +507,49 @@ class Parser:
         while (c and c == '='):
             level += 1
             c = self.cpGet()
+        
+        # Currently not scanning for attributes, and the crude grab
+        # is stepped off what should be whitespace. But soak space.
+        self.skipWhiteSpace()
+        
         tagname = 'h' + str(level)
         b.append('<{}>'.format(tagname) )
         self.processInlineContent(b)
         b.append('</{}>'.format(tagname))
 
-    def parse_mark_data(self, data):
+    def parse_mark_data(self):
+        '''
+        Finishes on delimiting whitespace
+        '''
+        data = self.getUntilWhiteSpace()
         splitC = data.split('.', 1)
         tagname = splitC[0]
         classname = ''
         if (len(splitC) > 1):
             classname = splitC[1] 
-        return Mark(tagname, classname, '')
+        return Mark(tagname, classname, '', '')
         
     def parseAndProcessBlockOpen(self, b, control):
         '''
+        Parse blockcontrol open
+        Expects to start on  the cp following the control
+        Ends on the delimiting whitespace
         Create, render and push data to the closeStack. 
         '''
         # parse blockcontrol
-        # Note this eats the delimiting space        
-        mark = self.parse_mark_data(self.getUntilWhiteSpace())
+        # Note this finishes on the delimiting space        
+        mark = self.parse_mark_data()
         if (mark.tagname in self.shortcutBlockTags):
-            mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '')
+            mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '', '')
         d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):
+        '''
+        Handle most Block controls, open or close
+        Except list elements and escapes.
+        
+        '''
         # Non-list element hard-left controls arrive here.
         # The position is after the control
    
@@ -523,10 +564,10 @@ class Parser:
             # list elements
             if (control == '+'):
                 self.typeMatchPopClose(b, ListCloseSignal)
-                
-            # munch the space
-            #self.cpGet()
             self.expectedHeadPopClose(b, control)
+                            
+            # munch the space
+            self.cpGet()
         else:
             # open mark
             self.parseAndProcessBlockOpen(b, control)
@@ -554,7 +595,7 @@ class Parser:
                 
             # open mark
             # Note this eats the delimiting space        
-            mark = self.parse_mark_data(self.getUntilWhiteSpace())
+            mark = self.parse_mark_data()
             d = self.pre_markdata(mark, self.lineno)
             self.markOpenPush(b, d)
         
@@ -577,7 +618,7 @@ class Parser:
             # special block, closes on inline starts and non-list blocks 
             #! put somewhere configurable
             #?
-            d = MarkData(Mark('ul', '', ''), InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
+            d = MarkData(Mark('ul', '', '', ''), InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
             self.markOpenPush(b, d)
             
             # update local head var
@@ -597,7 +638,7 @@ class Parser:
         else:
             # handled as block-level tag
             tagname = self.listElementTags[control]
-            d = MarkData(Mark(tagname, '', ''), ListElementOrCloseClosure, control, self.lineno)
+            d = MarkData(Mark(tagname, '', '', ''), ListElementOrCloseClosure, control, self.lineno)
 
             self.markOpenPush(b, d)
             self.onPostBlockInlineContent(b)

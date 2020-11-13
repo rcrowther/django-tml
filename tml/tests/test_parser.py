@@ -63,7 +63,7 @@ class TestParserInlineCodes(TestCase):
                 
     def test_inline(self):
         b = []
-        self.parser.feed(b, 'Lorem {   ipsum} dolor')
+        self.parser.feed(b, 'Lorem { ipsum} dolor')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <span>ipsum</span> dolor</p>')
 
@@ -93,7 +93,7 @@ class TestParserInlineCodes(TestCase):
 
 
 
-class TestParserStruvturalCodes(TestCase):
+class TestParserStructuralCodes(TestCase):
     '''
     Test that output is as expected from imput codes
     '''
