@@ -2,7 +2,7 @@ from tml.utils import Stack
 from tml import uml
 from django.utils.html import conditional_escape
 from collections import namedtuple
-
+import pathlib
 
 Mark = namedtuple('Mark', ['tagname', 'classname', 'href', 'text'])
 
@@ -150,7 +150,8 @@ class AnchorMarkData(MarkData):
         else:
             b.append('<a href="{}">'.format(href))
 
-
+    
+    
 #? figure something better, surely
 class PreMarkData(MarkData):
     def __init__(self, mark, open_lineno=None):
@@ -331,8 +332,10 @@ class Parser:
             while (c and (c != ')')):
                 hrefB.append(c)            
                 c = self.cpGet() 
-        # ...and text
-        if (c == '"'):
+
+        # ...now text
+        if (self.cpPeek() == '"'):
+            self.cpSkip()
             c = self.cpGet()
             while (c and (c != '"')):
                 textB.append(c)            
@@ -516,7 +519,33 @@ class Parser:
         b.append('<{}>'.format(tagname) )
         self.processInlineContent(b)
         b.append('</{}>'.format(tagname))
-    
+
+    #? like anonymouse list items
+    def onImageControl(self, b):
+        # It's a non-list element block
+        # open or close, this is the end of phrase content.
+        # signal
+        self.typeMatchPopClose(b, BlockMarkSignal)
+
+        # only do this to get attribute data
+        # need to go past peeked control
+        self.cpSkip()
+        mark = self.parseAttributes()
+        b.append(''.format(mark.href, mark.text) )
+        caption = ""
+        if (mark.text):
+            caption = "<figcaption>" + mark.text + "</figcaption>"
+        alt = 'image of ' + pathlib.Path(mark.href).stem
+        klass = ''
+        if (mark.classname):
+            klass = ' class="' + mark.classname + '"'
+        b.append('<figure><img src="{}" alt="{}"{}/>{}</figure>'.format(
+            mark.href, 
+            alt, 
+            klass, 
+            caption 
+        ))
+            
     def parseAndProcessBlockOpen(self, b, control):
         '''
         Parse blockcontrol open
@@ -650,6 +679,8 @@ class Parser:
            self.onHeadlineControl(b)
         elif (first_char in self.BlockListElementMarks):
             self.onListElementControl(b, self.cpGet())
+        elif (first_char == '*'):
+           self.onImageControl(b)
         elif (first_char == '?'):
             self.onBlockEscapeControl(b, self.cpGet())
         else:

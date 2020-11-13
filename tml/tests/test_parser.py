@@ -125,8 +125,19 @@ class TestParserStructuralCodes(TestCase):
         self.parser.feed(b, '==== Lorem')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<h4>Lorem</h4>')
-        
-        
+
+    def test_image(self):
+        b = []
+        self.parser.feed(b, '*(Lorem)')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<figure><img src="Lorem" alt="image of Lorem"/></figure>')        
+
+    def test_all_image(self):
+        b = []
+        self.parser.feed(b, '*.big(Lorem)"ipsum"')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<figure><img src="Lorem" alt="image of Lorem" class="big"/><figcaption>ipsum</figcaption></figure>')        
+                
         
     def test_block(self):
         b = []
