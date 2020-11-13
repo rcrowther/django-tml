@@ -79,12 +79,6 @@ class TestParserInlineCodes(TestCase):
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>Lorem <span class="price">ipsum</span> dolor</p>')
 
-    def test_inline_anchor(self):
-        b = []
-        self.parser.feed(b, 'Lorem {a(https://lipsum.com/) ipsum} dolor')
-        self.parser.close(b)
-        self.assertEqual(''.join(b), '<p>Lorem <a href="https://lipsum.com/">ipsum</a> dolor</p>')
-        
     def test_inline_nest(self):
         b = []
         self.parser.feed(b, '{cite Lorem {i ipsum} dolor}')
@@ -92,7 +86,33 @@ class TestParserInlineCodes(TestCase):
         self.assertEqual(''.join(b), '<p><cite>Lorem <i>ipsum</i> dolor</cite></p>')
 
 
+class TestParserAnchorCodes(TestCase):
+    '''
+    Test that output is as expected from imput codes
+    Anchoirs have some special handling
+    '''
+    def setUp(self):
+        self.parser = Parser()
+        
+    def test_inline_anchor(self):
+        b = []
+        self.parser.feed(b, 'Lorem {a(https://lipsum.com/) ipsum} dolor')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<p>Lorem <a href="https://lipsum.com/">ipsum</a> dolor</p>')
 
+    def test_inline_anchor_default(self):
+        b = []
+        self.parser.feed(b, '{a() ipsum}')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<p><a href="#">ipsum</a></p>')
+        
+    def test_inline_anchor_autowrite(self):
+        b = []
+        self.parser.feed(b, '{a(https://lipsum.com/)}')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<p><a href="https://lipsum.com/">https://lipsum.com/</a></p>')
+              
+              
 class TestParserStructuralCodes(TestCase):
     '''
     Test that output is as expected from imput codes
