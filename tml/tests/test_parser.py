@@ -1,7 +1,7 @@
 import unittest
 
 from django.test import TestCase
-from tml.parser import Parser
+from tml.parser import Parser, ParseError
 
 
 
@@ -190,7 +190,37 @@ class TestParserStructuralCodes(TestCase):
         self.parser.feed(b, 'e')
         self.parser.close(b)
         self.assertEqual(''.join(b), '<p>s</p><pre>    Lorem\n</pre><p>e</p>')
-        
+
+    def test_escape_tml(self):
+        b = []
+        self.parser.feed(b, 's')
+        self.parser.feed(b, '??')
+        self.parser.feed(b, '#feelgood')
+        self.parser.feed(b, '?')
+        self.parser.feed(b, 'e')
+        self.parser.close(b)
+        self.assertEqual(''.join(b), '<p>s</p><pre>#feelgood\n</pre><p>e</p>')
+
+    def test_escape_multiopen_thows_error(self):
+        b = []
+        with self.assertRaises(ParseError):
+            self.parser.feed(b, 's')
+            self.parser.feed(b, '??')
+            self.parser.feed(b, '?pre')
+            self.parser.feed(b, '?')
+            self.parser.feed(b, 'e')
+            self.parser.close(b)
+
+    def test_escape_unopened_close_throws_error(self):
+        b = []
+        with self.assertRaises(ParseError):
+            self.parser.feed(b, 's')
+            self.parser.feed(b, '##')
+            self.parser.feed(b, '    Lorem')
+            self.parser.feed(b, '?')
+            self.parser.feed(b, 'e')
+            self.parser.close(b)        
+                        
     def test_blockquote(self):
         b = []
         self.parser.feed(b, '>>')

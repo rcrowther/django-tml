@@ -589,24 +589,18 @@ class Parser:
             # open mark
             self.parseAndProcessBlockOpen(b, control)
 
-    def onBlockEscapeControl(self, b, control):
-        # Escape hard-left controls arrive here.
-        # The position is after the control
-        # Annoyingly different to generic block control handling,
-        # especially due to breakout handling.
+    def onBlockEscapeOpenControl(self, b, control):
         
-        # Open or close, close annon lists and inline content.
+        # Close annon lists and inline content.
         self.typeMatchPopClose(b, BlockMarkSignal)
-            
-        # now handle blockmark
         nxt = self.cpPeek()
         if (not nxt or self.isWhitespace(nxt)):
-            # close mark
-            self.inEscape = False
-                
-            # munch the space
-            #self.cpGet()
-            self.expectedHeadPopClose(b, control)
+            # Not in escape, but not an open mark. Error
+            raise ParseError(
+                self.lineno, 
+                "Unescaped markup contains escape close mark", 
+                self.line
+            )
         else:
             self.inEscape = True
                 
@@ -614,8 +608,28 @@ class Parser:
             # Note this eats the delimiting space        
             mark = self.parseAttributes()
             d = self.pre_markdata(mark, self.lineno)
-            self.markOpenPush(b, d)
+            self.markOpenPush(b, d)                    
         
+    def onBlockEscapeCloseControl(self, b, control):
+        # Escape hard-left controls when esccaped arrive here.
+        # The position is after the control       
+        nxt = self.cpPeek()
+        if (not nxt or self.isWhitespace(nxt)):
+            # good close
+            # close mark
+            self.inEscape = False
+                
+            # munch the space
+            #self.cpGet()
+            self.expectedHeadPopClose(b, control)            
+        else:
+            # In escape, but not a close mark. Error
+            raise ParseError(
+                self.lineno, 
+                "Escaped markup contains further escape open mark", 
+                self.line
+            )
+                        
     def onListElementControl(self, b, control):
         # List element hard-left controls arrive here.
         # The position is after the control
@@ -670,7 +684,19 @@ class Parser:
         self.linelen = len(line)
         first_char = self.cpPeek()
 
-        if (first_char is None):
+        if (self.inEscape):
+            if (first_char == '?'):
+                # close
+                #self.onBlockEscapeControl(b, self.cpGet())
+                self.onBlockEscapeCloseControl(b, self.cpGet())
+            else:
+                # Escaped. Write in the line, no parsing
+                b.append(conditional_escape(self.line))
+                
+                # append what would be there (but TML removes, usually)
+                b.append('\n')
+                                
+        elif (first_char is None):
             # close down inline
             self.typeMatchPopClose(b, InlineStartSignal)
         elif (first_char in self.BlockSignificantMarks):
@@ -682,18 +708,14 @@ class Parser:
         elif (first_char == '*'):
            self.onImageControl(b)
         elif (first_char == '?'):
-            self.onBlockEscapeControl(b, self.cpGet())
+            # open only
+            #self.onBlockEscapeControl(b, self.cpGet())
+            self.onBlockEscapeOpenControl(b, self.cpGet())
         else:
-            # Not a block, or any kind of whitespace. Must be inline 
-            # content. 
-            if (not self.inEscape):
-                self.onInlineStart(b)
-            else:
-                # Escaped. Write in the line, no parsing
-                b.append(conditional_escape(self.line))
-                
-                # append what would be there (but TML removes, usually)
-                b.append('\n')                 
+            # Not a block, all whitespace, or escaped. Must be inline 
+            # content.
+            self.onInlineStart(b)
+               
         
     def close(self, b):
         # close could focibly empty the stack.

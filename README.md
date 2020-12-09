@@ -1,7 +1,9 @@
 # Django-ttml
 > :warning: **If you have previous versions in use** After some exercise, django-tml is experimenting with a major API change. Version 0.6.0 changes the inline delimiting marks from boxquotes to TeX-like curly quotes.
 
-A reliable markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
+A markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
+
+This version of TML provides some error reporting.
 
 This app is called 'django-ttml', but internally the module is called 'tml'. It has no connection with, and different intentions to, the pypi package called [tml]{https://pypi.org/project/tml/), and it's [Github repository](https://github.com/translationexchange/tml-python). But this code has been called TML for years, in  several computer languages, and so the rename.
 
