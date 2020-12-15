@@ -539,10 +539,10 @@ class Parser:
         klass = ''
         if (mark.classname):
             klass = ' class="' + mark.classname + '"'
-        b.append('<figure><img src="{}" alt="{}"{}/>{}</figure>'.format(
+        b.append('<figure {}><img src="{}" alt="{}"/>{}</figure>'.format(
+            klass, 
             mark.href, 
             alt, 
-            klass, 
             caption 
         ))
             
