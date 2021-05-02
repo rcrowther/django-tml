@@ -8,7 +8,7 @@ This version of TML provides some error reporting.
 This app is called 'django-ttml', but internally the module is called 'tml'. It has no connection with, and different intentions to, the pypi package called [tml]{https://pypi.org/project/tml/), and it's [Github repository](https://github.com/translationexchange/tml-python). But this code has been called TML for years, in  several computer languages, and so the rename.
 
 ## Why you may not want this app
-Where people don't use [Markdown](https://www.markdownguide.org/basic-syntax/), they use [reStructuredText](https://www.writethedocs.org/guide/writing/reStructuredText/). This is the only current implementation of TML. And this version is deliberately a web/HTML tool. TML is a very flexible language, but this app will not generate academic-level citations.
+Where people don't use [Markdown](https://www.markdownguide.org/basic-syntax/), they use [reStructuredText](https://www.writethedocs.org/guide/writing/reStructuredText/). This is the only current implementation of TML. And this version is deliberately a web/HTML tool. TML is a very flexible language, but this app generates basic HTML. It is not intended to generate academic-level citations, micro-formating etc.
 
 
 ## Why you may be interested
@@ -120,11 +120,13 @@ NB: if used in admin, the button is positioned to the right. But in other forms 
         
     
 ## TML Intro
+It would take pages of specification to cover the ins and outs of TML. But here is a short into to this reduced version.
+
+Unlike several text-markup languages, TML does not aim to be 'invisible' to readers. It aims to be robust. Two results of robustness---within it's defined scope of typeography (ok, is that a cheat?) TML never needs to be escaped, and can give useful error messages. Sub-aims are to be fast to type (you only ever use top keyboard chars for shortcut cases), and memorable (I hate wasting time relearning markup).
+
 TML output usually paragraphs everything.
 
-It would take pages of spec to cover the ins and outs of TML. But here is a short into to this reduced version.
-
-Control codes are placed hard left in text. These are followed by a tagname, then closed by a repetition of the control code. These 'block' codes correspond to HTML 'structural' tags,
+Block control codes are placed hard left in text. These are followed by a tagname, then closed by a repetition of the control code. These 'block' codes correspond to HTML 'structural' tags,
 
     #div
     This is inside the div
@@ -154,7 +156,7 @@ renders,
 
     <div class="warning"><p>Lorem ipsum dolor</p></div>
 
-I give up. Try pasting this into a TML field,
+That is more than enough explanation in a README devoted to a module. I give up. Try pasting this into a TML field,
 
     #article
 
@@ -188,7 +190,7 @@ I give up. Try pasting this into a TML field,
     - item 2
     - item 3
 
-    And finally, a couple of useful tricks [a(https://www.etymonline.com/) here is an anchor]. 
+    And finally, a couple of useful tricks {a(https://www.etymonline.com/) here is an anchor}. 
 
     If you use the Prism parser (or the template tag ''tml_uml_prism'), the ''pre' block is tricked into being a codeblock, and the tagname is tricked into being the language specifier. Like this,
 
@@ -199,6 +201,35 @@ I give up. Try pasting this into a TML field,
     To make code rendering in ''pre' blocks highlight you neet to link the webpage to the [a(https://prismjs.com/) prismjs] code.
     #
 
+### Tables, a quick word
+Page layout aside (in which TML has no interest) tables are not used often. So there is no TML implementation. If you do need tables, this version of TML can invert the Django template policy of ''everything is escaped' and rage onwards with raw HTML, 
+
+    <table class=ruled&#32;wide>
+      <thead>
+      ...
+      </thead>
+      <tbody>
+      ...
+      </tbody>
+    </table>
+
+However, you can utilise the ability of the TML mark forms to define HTML element names,
+
+    #table
+    #thead
+    {th manufacturer}{th model}
+    {th purchase-date}{th type}{th cordless}{th washable}
+    #
+    #tbody
+    #tr
+    {td MicroShave}{td XFP456SC}
+    {td  2/9/2021}{td foil}{td y}{td y}
+    #
+    ...
+    #
+    #
+
+This may not be a dedicated solution, but I find it much easier to handle than raw HTML.
 
 ## UML Intro
 UML is a small set of conversions from keyboard-accessible codepoint sequences into inaccessible-but-useful-or-common codepoints. For example, it can turn shortcut inverted commas into open/close curly inverted commas. It can render a copyright sign etc.  
@@ -219,6 +250,4 @@ UML code stands alone. However, you may notice that in the templatetags UML is i
         {{ article.text|tml_uml }}
     </article>
 
-If you look at the parser code, there's a paremeter to enable UML. Is that a convenience?
-
-No. The TML parser integrates UML so UML is never applied to TML codes. This is useful. If UML is applied to text generally, it may do unintended conversions to URLs or TML codes. Running UML after TML (or any other text processing) is risky too, it may do unintended conversions to the generated HTML. But the integrated UML only converts free text.
+If you look at the parser code, there's a paremeter to enable UML. Is that a convenience? No. The TML parser integrates UML so UML is never applied to TML codes. This is useful. If UML is applied to text generally, it may do unintended conversions to URLs or TML codes. Running UML after TML (or any other text processing) is risky too, it may do unintended conversions to the generated HTML. But the integrated UML only converts TML-designated free text.
