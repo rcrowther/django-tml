@@ -85,6 +85,15 @@ This, at least, demonstrates how to convert in open code.
 
 
 ## Details of operation
+### Overriding
+Django is Python, everything can be overridden. But I will not try to sell or fool, the structure of Django makes TML plugin tricky to override.
+
+You need to make a custom parser. Often, this would only be a small override, For example, to respond to PRE marks with special HTML layout. The parser is structured to make these kinds of changes easy (it uses structured calls to render).
+
+Then, you will need to make a new template tag. After all, those template tag calls are the easy, dramtic effect of this module.
+
+In summary, overrides are awkward, and will cost you an afternoon to understand what is happening, then where and how to trigger the effect you want. But to get what you want may, in the end, only need five lines of code (if anyoine is interested in making this easier, then talk to me).
+
 ### IO
 The code in 'tml/io.py' is worth mentioning. It shows how to handle the parser.
 
@@ -124,7 +133,7 @@ It would take pages of specification to cover the ins and outs of TML. But here 
 
 Unlike several text-markup languages, TML does not aim to be 'invisible' to readers. It aims to be robust. Two results of robustness---within it's defined scope of typeography (ok, is that a cheat?) TML never needs to be escaped, and can give useful error messages. Sub-aims are to be fast to type (you only ever use top keyboard chars for shortcut cases), and memorable (I hate wasting time relearning markup).
 
-TML output usually paragraphs everything.
+The output from TML parsers usually paragraphs everything, automatically.
 
 Block control codes are placed hard left in text. These are followed by a tagname, then closed by a repetition of the control code. These 'block' codes correspond to HTML 'structural' tags,
 
@@ -200,6 +209,21 @@ That is more than enough explanation in a README devoted to a module. I give up.
 
     To make code rendering in ''pre' blocks highlight you neet to link the webpage to the [a(https://prismjs.com/) prismjs] code.
     #
+
+### Images, a quick word
+There is a special, all-in-one image tag at block level. An asterisk mark, placed at line start,
+
+    *.wide(/images/tux.jpg)"The little guy"
+
+renders unusual HTML,
+
+    <figure class="wide"">
+        <img src="/images/tux.jpg" alt="image of tux">
+        <figcaption>The little guy</figcaption>
+    </figure>
+
+Yes, there are several strange things about this. The image is wrapped in a FIGURE element. The class is applied to the FIGURE, not the image. The text attribute is used to generate a caption. And the HTML 'alt' attribute is auto-generated from the filename.
+
 
 ### Tables, a quick word
 Page layout aside (in which TML has no interest) tables are not used often. So there is no TML implementation. If you do need tables, this version of TML can invert the Django template policy of ''everything is escaped' and rage onwards with raw HTML, 
