@@ -60,7 +60,7 @@ This will run the unicode converters,
 
 This runs the HTML generation of TML, followed by the Unicode conversion of UML,
 
-     {{ page.text|uml_tml }}
+     {{ page.text|tml_uml }}
 
 See [UML/TML integration](uml/tml-integration) for a description.
 
