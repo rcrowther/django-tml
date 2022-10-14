@@ -4,12 +4,13 @@ from django.utils.html import conditional_escape
 from collections import namedtuple
 import pathlib
 
-Mark = namedtuple('Mark', ['tagname', 'classname', 'href', 'text'])
+Mark = namedtuple('Mark', ['tagname', 'idName', 'classname', 'href', 'text'])
 
 
 
 class ParseError(Exception):
     def __init__(self, lineno, message, data=''):
+        # data is, for example, the line text, or stored matches etc.
         if data:
             data = '\n    ' + data        
         fullMessage = "src:{} {}{}".format(lineno, message, data)
@@ -97,22 +98,39 @@ InlineCloseMarkOrLineEndClosure = InlineCloseMark()
         
 class MarkData():
     '''
+    Carries markdata, with formatting, error and error anticipation 
+    data
+    
     mark
         a parsed representation of a mark
     control
         the text mark which triggered creating this class
     '''
+    #? The mix of error and formatting data is not good 
     def __init__(self, mark, closeType, control, open_lineno=None):
         self.mark = mark 
         self.closeType = closeType
         self.control = control 
+        
+        # Linenumber of opening mark. For errors in explicit close marks
         self.open_lineno = open_lineno
         
     def open(self, b):
+        b.append('<')
+        b.append(self.mark.tagname)
+        if (self.mark.idName):
+            b.append(' id="')
+            b.append(self.mark.idName)
+            b.append('"')
         if (self.mark.classname):
-            b.append('<{} class="{}">'.format(self.mark.tagname, self.mark.classname))
-        else:
-            b.append('<{}>'.format(self.mark.tagname))
+            b.append(' class="')
+            b.append(self.mark.classname)
+            b.append('"')
+        b.append('>')
+        #if (self.mark.classname):
+        #    b.append('<{} class="{}">'.format(self.mark.tagname, self.mark.classname))
+        #else:
+        #    b.append('<{}>'.format(self.mark.tagname))
 
     def close(self, b):
         b.append('</{}>'.format(self.mark.tagname))
@@ -131,7 +149,7 @@ class MarkData():
 #?        
 class ParagraphMarkData(MarkData):
     def __init__(self, **kwargs):
-        super().__init__(Mark('p', '', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
+        super().__init__(Mark('p', '', '', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
 
 
 
@@ -157,14 +175,14 @@ class PreMarkData(MarkData):
     def __init__(self, mark, open_lineno=None):
         super().__init__(mark, TargetedMarkClosure, '?', open_lineno)
 
-    def open(self, b):
-        if (self.mark.classname):
-            b.append('<pre class="{}">'.format(self.mark.classname))
-        else:
-            b.append('<pre>')
+    # def open(self, b):
+        # if (self.mark.classname):
+            # b.append('<pre class="{}">'.format(self.mark.classname))
+        # else:
+            # b.append('<pre>')
             
-    def close(self, b):
-        b.append('</pre>')  
+    # def close(self, b):
+        # b.append('</pre>')  
 
 
 
@@ -202,6 +220,7 @@ class Parser:
           '+' : 'ul', 
           '?' : 'pre',
           '>' : 'blockquote',
+          '{' : 'span',
     }
 
     #NB Not rendered through stack, or with attributes, so needs no 
@@ -303,28 +322,72 @@ class Parser:
             c = self.cpPeek()
         return c
 
-    def parseAttributes(self):
+
+
+    def parseAttributes(self, cntrlChar):
         '''
-        Parse attributes inside an inline tag
+        Parse attributes inside a markup tag
         Starts after the control.
         Ends beyond delimiter, either whitespace, linend or ')'
         This is a quiet function.
         '''
+        tagnameB = []
+        tagB = []
+        tag = ''
+        idB = []
+        classB = []
         tagclassnameB = []
         hrefB = []
         textB = []
+        
         c = self.cpGet()
-        while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
-            tagclassnameB.append(c)
+        
+        # tagname
+        if (c == cntrlChar):
+            #print(f"found shortcurt cntrl {c}")
+            tag = self.shortcutBlockTags.get(c, None)
+            
+            # move on
             c = self.cpGet()
+        else:
+            while (c and not self.isWhitespace(c) and c != '#' and c != '.' and c != '(' and c != '"'):
+                tagB.append(c)
+                c = self.cpGet()
+            tag = ''.join(tagB)
+            
+        # Check there is a tagName
+        if (not tag):
+            raise ParseError(
+                self.lineno, 
+                "No tag parsed in attributes", 
+                self.line
+            )
+            
+        # identity
+        if (c == '#'):
+            c = self.cpGet()
+            while (c and not self.isWhitespace(c) and c != '.' and c != '(' and c != '"'):
+                idB.append(c)
+                c = self.cpGet()                     
+                    
+        # class
+        if (c == '.'):
+            c = self.cpGet()
+            while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
+                classB.append(c)
+                c = self.cpGet() 
+                                    
+        # while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
+            # tagclassnameB.append(c)
+            # c = self.cpGet()
             
         # now get tag and class names
-        tagclassname =  ''.join(tagclassnameB) 
-        splitC = tagclassname.split('.', 1)
-        tagname = splitC[0]
-        classname = ''
-        if (len(splitC) > 1):
-            classname = splitC[1] 
+        # tagclassname =  ''.join(tagclassnameB) 
+        # splitC = tagclassname.split('.', 1)
+        # tagname = splitC[0]
+        # classname = ''
+        # if (len(splitC) > 1):
+            # classname = splitC[1] 
  
         # Now parse href
         if (c == '('):
@@ -340,7 +403,8 @@ class Parser:
             while (c and (c != '"')):
                 textB.append(c)            
                 c = self.cpGet()                 
-        return Mark(tagname, classname, ''.join(hrefB), ''.join(textB))
+        return Mark(tag, ''.join(idB), ''.join(classB), ''.join(hrefB), ''.join(textB))
+        #return Mark(tagname, classname, ''.join(hrefB), ''.join(textB))
 
 
     # Block stack handling
@@ -394,17 +458,17 @@ class Parser:
                 
     # inline
         
-    def onInlineOpen(self, b):
+    def onInlineOpen(self, b, cntrlChar):
         '''
         Start is the control cp
         end is past the delimiter, first non-whitespace or line-end.
         '''
-        mark = self.parseAttributes()     
+        mark = self.parseAttributes(cntrlChar)     
         if (mark.tagname == 'a'):
             d = AnchorMarkData(mark, self.lineno)
         else:
             if (not mark.tagname):
-                mark = Mark('span', mark.classname, '', '')
+                mark = Mark('span', '', mark.classname, '', '')
             # assume generic closure
             d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
@@ -440,10 +504,11 @@ class Parser:
         cp = self.cpGet()
         while (cp):
             if (cp == self.InlineOpenMark):
+                # write down what we have
                 self.inlineBuilderWrite(b)
                 
                 # Process the mark
-                self.onInlineOpen(b)
+                self.onInlineOpen(b, self.InlineOpenMark)
                 
                 # Now on a new cp. So we test from new...
                 cp = self.cpGet()
@@ -530,7 +595,7 @@ class Parser:
         # only do this to get attribute data
         # need to go past peeked control
         self.cpSkip()
-        mark = self.parseAttributes()
+        mark = self.parseAttributes(None)
         b.append(''.format(mark.href, mark.text) )
         caption = ""
         if (mark.text):
@@ -546,7 +611,7 @@ class Parser:
             caption 
         ))
             
-    def parseAndProcessBlockOpen(self, b, control):
+    def parseAndProcessBlockOpen(self, b, cntrlChar):
         '''
         Parse blockcontrol open
         Expects to start on  the cp following the control
@@ -555,10 +620,12 @@ class Parser:
         '''
         # parse blockcontrol
         # Note this finishes on the delimiting space        
-        mark = self.parseAttributes()
-        if (mark.tagname in self.shortcutBlockTags):
-            mark = Mark(self.shortcutBlockTags[mark.tagname], mark.classname, '', '')
-        d = MarkData(mark, TargetedMarkClosure, control, self.lineno)
+        mark = self.parseAttributes(cntrlChar)
+        #!!! Move this up to parsing attributes
+        # OR, how do we avoid inlines??? OR do we avoid them?
+        #if (mark.tagname in self.shortcutBlockTags):
+        #    mark = Mark(self.shortcutBlockTags[mark.tagname], '', mark.classname, '', '')
+        d = MarkData(mark, TargetedMarkClosure, cntrlChar, self.lineno)
         self.markOpenPush(b, d)
                 
     def onBlockControl(self, b, control):
@@ -589,8 +656,8 @@ class Parser:
             # open mark
             self.parseAndProcessBlockOpen(b, control)
 
-    def onBlockEscapeOpenControl(self, b, control):
-        
+    def onBlockEscapeOpenControl(self, b, cntrlChar):
+        # If reach here must be an open control---see trigger code
         # Close annon lists and inline content.
         self.typeMatchPopClose(b, BlockMarkSignal)
         nxt = self.cpPeek()
@@ -606,7 +673,7 @@ class Parser:
                 
             # open mark
             # Note this eats the delimiting space        
-            mark = self.parseAttributes()
+            mark = self.parseAttributes(cntrlChar)
             d = self.pre_markdata(mark, self.lineno)
             self.markOpenPush(b, d)                    
         
@@ -649,7 +716,7 @@ class Parser:
             # special block, closes on inline starts and non-list blocks 
             #! put somewhere configurable
             #?
-            d = MarkData(Mark('ul', '', '', ''), InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
+            d = MarkData(Mark('ul', '', '', '', ''), InlineStartOrNonListBlockClosure, '+', open_lineno=self.lineno)
             self.markOpenPush(b, d)
             
             # update local head var
@@ -669,7 +736,7 @@ class Parser:
         else:
             # handled as block-level tag
             tagname = self.listElementTags[control]
-            d = MarkData(Mark(tagname, '', '', ''), ListElementOrCloseClosure, control, self.lineno)
+            d = MarkData(Mark(tagname, '', '', '', ''), ListElementOrCloseClosure, control, self.lineno)
 
             self.markOpenPush(b, d)
             self.onPostBlockInlineContent(b)
@@ -761,7 +828,8 @@ class PreCodeBlockPrismMarkData(MarkData):
                   
     def open(self, b):
         # no classname handling
-        lang = 'none' if (self.mark.tagname == '?') else self.mark.tagname
+        print(f"{self.mark.tagname}")
+        lang = 'none' if (self.mark.tagname == 'pre') else self.mark.tagname
         b.append('<figure><pre><code contenteditable spellcheck="false" class="language-{0}">'.format(lang))
 
     def close(self, b):
