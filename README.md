@@ -1,5 +1,7 @@
 # Django-tml
-> :warning: **Due to a name clash** This code is in Python repositories named as "django-ttml" ("ttml" is not a mistype).
+> :warning: new version of TML has changed API in some places.
+
+Note: **Due to a name clash** This code is in Python repositories named as "django-ttml" ("ttml" is not a mistype).
 
 A markup language with the essentials for HTML typography. Fast to type and memorable. Includes optional UML, for unicode shortcuts.
 
@@ -151,13 +153,13 @@ There is also an inline tag. This can also be followed by a tagname, The tagname
  
     So {cite this is inside} a citation tag.
 
-There is a shortcut made by omitting the control code,
+There is a shortcut made by doubling the opening curly bracket,
 
-    So { this is inside a span} followed by other text
+    So {{ this is inside a span} followed by other text
 
-The tagname can be followed with a full-stop/period, text after that is used for a classname,
+The tagname can be followed with a hash to start an id, then a full-stop/period to start a classname,
 
-    ##.warning
+    #div#anIdName.aWarningClassName
     This is inside a div
     #
 
@@ -210,19 +212,19 @@ That is more than enough explanation in a README devoted to a module. I give up.
     To make code rendering in ''pre' blocks highlight you neet to link the webpage to the [a(https://prismjs.com/) prismjs] code.
     #
 
-### Images, a quick word
-There is a special, all-in-one image tag at block level. An asterisk mark, placed at line start,
+### Self-closing tags, and images
+There is a special, self-closing tag mark at block level. It's an asterisk. It's shortcut implementation is an 'img' tag,
 
-    *.wide(/images/tux.jpg)"The little guy"
+    **.wide(/images/tux.jpg)"The little guy"
 
-renders unusual HTML,
+Renders unusual HTML,
 
-    <figure class="wide"">
-        <img src="/images/tux.jpg" alt="image of tux">
+    <figure>
+        <img  class="wide"" src="/images/tux.jpg" alt="image of tux">
         <figcaption>The little guy</figcaption>
     </figure>
 
-Yes, there are several strange things about this. The image is wrapped in a FIGURE element. The class is applied to the FIGURE, not the image. The text attribute is used to generate a caption. And the HTML 'alt' attribute is auto-generated from the filename.
+Yes, there are several strange things about this. The image is wrapped in a FIGURE element. The text attribute is used to generate a caption. And the HTML 'alt' attribute is auto-generated from the filename.
 
 
 ### Tables, a quick word
@@ -253,7 +255,7 @@ However, you can utilise the ability of the TML mark forms to define HTML elemen
     #
     #
 
-This may not be a dedicated solution, but I find it much easier to handle than raw HTML.
+This may not be a dedicated solution, but I find it easier to handle than raw HTML. And consistent.
 
 ## UML Intro
 UML is a small set of conversions from keyboard-accessible codepoint sequences into inaccessible-but-useful-or-common codepoints. For example, it can turn shortcut inverted commas into open/close curly inverted commas. It can render a copyright sign etc.  
