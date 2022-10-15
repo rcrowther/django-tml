@@ -152,7 +152,7 @@ Less elegant, but means if you want to add self-closing HTML elements, you can. 
 
     Ok, I'm back. 
 
-or other self-closing elements like '<br>' and '<wbr>'.
+or other self-closing elements like BR and WBR.
 
 There's an addition. '#' in the aattribute list will generate an 'id' attribute in the HTML. In the same way '.' will generate a 'class' attribute. If both are present, 'id' must come before 'class',
 
@@ -160,11 +160,11 @@ There's an addition. '#' in the aattribute list will generate an 'id' attribute 
     I am me!
     #
 
-generate,
+generates,
 
     <div id="iamwhatiam" class="simplelifestyle">I am me!</div>
 
-The special inline shortcut for 'span' is also dropped. Inline attribute handling is now like block opeing marks. Needs a tag or shortcut. So, if you need a 'span' shortcut, double up,
+The special inline shortcut for 'span' is dropped. Inline attribute handling is now like block opeing marks. Needs a tag or shortcut. So, if you need a 'span' shortcut, double up,
 
     I give warning {{.warning can be risky}
 
