@@ -27,15 +27,11 @@ class CloseType():
     #    self.closeType = closeType
     def __repr__(self):
         return self.__class__.__name__
-        
-# headlines, anonyomous list elements
-#x
-# class NotStacked(CloseType):
-    # pass
-#NotStackedClosure = LineEndSignal()
+
+
 
 # bracketted blocks
-#NB The signal is never used. IT's a placeholder for the 
+# The signal is never used. It's a placeholder for the 
 # MarkData atttribute.
 class TargetedMarkSignal(CloseType):
     pass
@@ -94,7 +90,6 @@ class InlineCloseMark():
     pass
 InlineCloseMarkOrLineEndClosure = InlineCloseMark()
     
-
         
 class MarkData():
     '''
@@ -116,21 +111,18 @@ class MarkData():
         self.open_lineno = open_lineno
         
     def open(self, b):
-        b.append('<')
-        b.append(self.mark.tagname)
-        if (self.mark.idName):
-            b.append(' id="')
-            b.append(self.mark.idName)
-            b.append('"')
-        if (self.mark.classname):
-            b.append(' class="')
-            b.append(self.mark.classname)
-            b.append('"')
+        # b.append('<')
+        # b.append(self.mark.tagname)
+        # if (self.mark.idName):
+            # b.append(' id="')
+            # b.append(self.mark.idName)
+            # b.append('"')
+        # if (self.mark.classname):
+            # b.append(' class="')
+            # b.append(self.mark.classname)
+            # b.append('"')
+        markToUnfinishedHTML(self.mark, b)
         b.append('>')
-        #if (self.mark.classname):
-        #    b.append('<{} class="{}">'.format(self.mark.tagname, self.mark.classname))
-        #else:
-        #    b.append('<{}>'.format(self.mark.tagname))
 
     def close(self, b):
         b.append('</{}>'.format(self.mark.tagname))
@@ -146,27 +138,26 @@ class MarkData():
             self.open_lineno,
         )        
         
-#?        
+       
 class ParagraphMarkData(MarkData):
+    # Exists as convenience to cut down on parameters
     def __init__(self, **kwargs):
         super().__init__(Mark('p', '', '', '', ''), InlineStartOrBlockMarkClosure, '\\n', **kwargs)
 
 
 
 class AnchorMarkData(MarkData):
-    # This hold now?
     def __init__(self, mark, open_lineno=None):
         super().__init__(mark, TargetedMarkClosure, '{', open_lineno)
     
-    # tagname is on mark?
     def open(self, b):
+        markToUnfinishedHTML(self.mark, b)
+        b.append(' href="')
         href =  '#'   
         if (self.mark.href):
             href = self.mark.href
-        if (self.mark.classname):
-            b.append('<a href="{}" class="{}">'.format(href, self.mark.classname))
-        else:
-            b.append('<a href="{}">'.format(href))
+        b.append(href)
+        b.append('">')
 
     
     
@@ -185,6 +176,24 @@ class PreMarkData(MarkData):
         # b.append('</pre>')  
 
 
+def markToUnfinishedHTML(mark, b):
+    '''
+    Incomplete render of mark data to HTML
+    The render is not complete to give opportunity to add extra 
+    attributes before closing. Currently handles tag, id and 
+    classname. The mark should always have a tag field (this is 
+    unchecked)
+    '''
+    b.append('<')
+    b.append(mark.tagname)
+    if (mark.idName):
+        b.append(' id="')
+        b.append(mark.idName)
+        b.append('"')
+    if (mark.classname):
+        b.append(' class="')
+        b.append(mark.classname)
+        b.append('"')
 
 class Parser:
     '''
@@ -221,9 +230,10 @@ class Parser:
           '?' : 'pre',
           '>' : 'blockquote',
           '{' : 'span',
+          '*' : 'img',
     }
 
-    #NB Not rendered through stack, or with attributes, so needs no 
+    # not rendered through stack, or with attributes, so needs no 
     # MarkData
     listElementTags = { 
       '-': 'li',
@@ -323,20 +333,50 @@ class Parser:
         return c
 
 
-
-    def parseAttributes(self, cntrlChar):
+    def parseAttributes(self, tagname, codepoint):
         '''
-        Parse attributes inside a markup tag
-        Starts after the control.
-        Ends beyond delimiter, either whitespace, linend or ')'
+        Parse a limited range of attributes inside a markup tag.
+        
+        Starts at currtent codepoint.
+        Ends beyond delimiter, either whitespace or linend
         This is a quiet function.
         '''
-        tagnameB = []
+        # This duplication is a specialisation needed for headline 
+        # attribute parsing. Headlines are unable to know their mark
+        # length, so cannot settle on a last codepoint without 
+        # overstepping or backtrack
+        idB = []
+        classB = []
+        
+        c = codepoint
+        
+        # identity
+        if (c == '#'):
+            c = self.cpGet()
+            while (c and not self.isWhitespace(c) and c != '.'):
+                idB.append(c)
+                c = self.cpGet()                     
+
+        # class
+        if (c == '.'):
+            c = self.cpGet()
+            while (c and not self.isWhitespace(c)):
+                classB.append(c)
+                c = self.cpGet() 
+        return Mark(tagname, ''.join(idB), ''.join(classB), '', '')
+                
+
+    def parseTagAndAttributes(self, cntrlChar):
+        '''
+        Parse tab and attributes after a mark.
+        
+        Starts after the control.
+        Ends beyond delimiter, either whitespace, linend or ')'
+        '''
         tagB = []
         tag = ''
         idB = []
         classB = []
-        tagclassnameB = []
         hrefB = []
         textB = []
         
@@ -375,18 +415,6 @@ class Parser:
             while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
                 classB.append(c)
                 c = self.cpGet() 
-                                    
-        # while (c and not self.isWhitespace(c) and c != '(' and c != '"'):
-            # tagclassnameB.append(c)
-            # c = self.cpGet()
-            
-        # now get tag and class names
-        # tagclassname =  ''.join(tagclassnameB) 
-        # splitC = tagclassname.split('.', 1)
-        # tagname = splitC[0]
-        # classname = ''
-        # if (len(splitC) > 1):
-            # classname = splitC[1] 
  
         # Now parse href
         if (c == '('):
@@ -403,7 +431,6 @@ class Parser:
                 textB.append(c)            
                 c = self.cpGet()                 
         return Mark(tag, ''.join(idB), ''.join(classB), ''.join(hrefB), ''.join(textB))
-        #return Mark(tagname, classname, ''.join(hrefB), ''.join(textB))
 
 
     # Block stack handling
@@ -462,12 +489,12 @@ class Parser:
         Start is the control cp
         end is past the delimiter, first non-whitespace or line-end.
         '''
-        mark = self.parseAttributes(cntrlChar)     
+        mark = self.parseTagAndAttributes(cntrlChar)     
         if (mark.tagname == 'a'):
+            # having a different renderer (in MarkData) is preffered to
+            # extensive, repetitive generic rendering
             d = AnchorMarkData(mark, self.lineno)
         else:
-            if (not mark.tagname):
-                mark = Mark('span', '', mark.classname, '', '')
             # assume generic closure
             d = MarkData(mark, TargetedMarkClosure, self.InlineOpenMark, self.lineno)
         self.markOpenPush(b, d)
@@ -477,6 +504,8 @@ class Parser:
                 
         # And now a trick, though it is semantically consistent.
         if (mark.tagname == 'a' and self.cpPeek() == self.InlineCloseMark):
+            #! could be done in rendering--href byt no content -> text 
+            # is href
             # The open tag is written, the closure pushed.
             # but, if it's an anchor, and the next cp is an inline close
             # we have an anchor with no content, not even space.
@@ -575,17 +604,24 @@ class Parser:
             level += 1
             c = self.cpGet()
         
-        # Currently not scanning for attributes, and the crude grab
-        # is stepped off what should be whitespace. But soak space.
-        self.skipWhiteSpace()
-        
         tagname = 'h' + str(level)
-        b.append('<{}>'.format(tagname) )
+
+        # Currently not scanning for attributes, and 
+        mark = self.parseAttributes(tagname, c)
+
+        # Soak space.
+        self.skipWhiteSpace()
+
+        # render
+        markToUnfinishedHTML(mark, b)
+        b.append('>')
         self.processInlineContent(b)
-        b.append('</{}>'.format(tagname))
+        b.append('</')
+        b.append(tagname)
+        b.append('>')
 
     #? like anonymouse list items
-    def onImageControl(self, b):
+    def onSelfClosingControl(self, b):
         # It's a non-list element block
         # open or close, this is the end of phrase content.
         # signal
@@ -594,21 +630,24 @@ class Parser:
         # only do this to get attribute data
         # need to go past peeked control
         self.cpSkip()
-        mark = self.parseAttributes(None)
-        b.append(''.format(mark.href, mark.text) )
-        caption = ""
-        if (mark.text):
-            caption = "<figcaption>" + mark.text + "</figcaption>"
-        alt = 'image of ' + pathlib.Path(mark.href).stem
-        klass = ''
-        if (mark.classname):
-            klass = ' class="' + mark.classname + '"'
-        b.append('<figure {}><img src="{}" alt="{}"/>{}</figure>'.format(
-            klass, 
-            mark.href, 
-            alt, 
-            caption 
-        ))
+        mark = self.parseTagAndAttributes('*')
+        if (mark.tagname == 'img'):
+            b.append('<figure>')
+            markToUnfinishedHTML(mark, b)
+            b.append(' src="')
+            b.append(mark.href)
+            b.append('" alt="image of ')
+            b.append(pathlib.Path(mark.href).stem)
+            b.append('"/>')
+            if (mark.text):
+                b.append("<figcaption>")
+                b.append(mark.text)
+                b.append("</figcaption>")
+            b.append('</figure>')
+        else:
+            markToUnfinishedHTML(mark, b)
+            b.append('/>')
+
             
     def parseAndProcessBlockOpen(self, b, cntrlChar):
         '''
@@ -619,11 +658,7 @@ class Parser:
         '''
         # parse blockcontrol
         # Note this finishes on the delimiting space        
-        mark = self.parseAttributes(cntrlChar)
-        #!!! Move this up to parsing attributes
-        # OR, how do we avoid inlines??? OR do we avoid them?
-        #if (mark.tagname in self.shortcutBlockTags):
-        #    mark = Mark(self.shortcutBlockTags[mark.tagname], '', mark.classname, '', '')
+        mark = self.parseTagAndAttributes(cntrlChar)
         d = MarkData(mark, TargetedMarkClosure, cntrlChar, self.lineno)
         self.markOpenPush(b, d)
                 
@@ -672,12 +707,14 @@ class Parser:
                 
             # open mark
             # Note this eats the delimiting space        
-            mark = self.parseAttributes(cntrlChar)
+            mark = self.parseTagAndAttributes(cntrlChar)
+            
+            #!? this should be defended in case the tag is NOT a PRE
             d = self.pre_markdata(mark, self.lineno)
             self.markOpenPush(b, d)                    
         
     def onBlockEscapeCloseControl(self, b, control):
-        # Escape hard-left controls when esccaped arrive here.
+        # Escape hard-left controls when escaped arrive here.
         # The position is after the control       
         nxt = self.cpPeek()
         if (not nxt or self.isWhitespace(nxt)):
@@ -753,7 +790,6 @@ class Parser:
         if (self.inEscape):
             if (first_char == '?'):
                 # close
-                #self.onBlockEscapeControl(b, self.cpGet())
                 self.onBlockEscapeCloseControl(b, self.cpGet())
             else:
                 # Escaped. Write in the line, no parsing
@@ -772,10 +808,9 @@ class Parser:
         elif (first_char in self.BlockListElementMarks):
             self.onListElementControl(b, self.cpGet())
         elif (first_char == '*'):
-           self.onImageControl(b)
+           self.onSelfClosingControl(b)
         elif (first_char == '?'):
             # open only
-            #self.onBlockEscapeControl(b, self.cpGet())
             self.onBlockEscapeOpenControl(b, self.cpGet())
         else:
             # Not a block, all whitespace, or escaped. Must be inline 
@@ -785,7 +820,7 @@ class Parser:
         
     def close(self, b):
         # close could focibly empty the stack.
-        # Vut it's maybe more interesting to expose bracketting errors
+        # But it's maybe more interesting to expose bracketting errors
         # not disgusise them. So use an InlineStartSignal, oddly, which
         # will close anonymous lists and paragraphs, so no need for a
         # trailing newline. But it will not fix unbalanced block marks. 
@@ -828,7 +863,10 @@ class PreCodeBlockPrismMarkData(MarkData):
     def open(self, b):
         # no classname handling
         lang = 'none' if (self.mark.tagname == 'pre') else self.mark.tagname
-        b.append('<figure><pre><code contenteditable spellcheck="false" class="language-{0}">'.format(lang))
+        b.append('<figure><pre><code contenteditable spellcheck="false" class="language-')
+        b.append(lang)
+        b.append('">')
+
 
     def close(self, b):
         b.append('</code></pre></figure>') 
