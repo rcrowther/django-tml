@@ -27,8 +27,6 @@ There is a basic attitude for use in Django which is, if users send markup, code
 - pick or create a TextField for TML storage.
 - Add the template tag to the rendering of the textfield
 
-
-
 ### Install
 PyPi,
 
@@ -131,6 +129,62 @@ NB: if used in admin, the button is positioned to the right. But in other forms 
         
     
 ## TML Intro
+
+### The API in Version 1
+The main changes are:
+
+The image mark ('*') has been expanded to cover the idea of self-closing elements. The new mark is parsed as a block opeining mark, which needs a tagname. The shortcut of this mark is 'img'. So 'img' now needs two asterisks, not one,
+
+    **(/images/tux.jpg)"The little guy"
+
+generates,
+
+    <figure>
+    <img src="/images/tux.jpg"/>
+    <figcaption>The little guy</figcaption>
+    </figure>
+
+Less elegant, but means if you want to add self-closing HTML elements, you can. For example this version of TML can now generate a horizontal rule,
+
+    I've finished what I was saying, am out of breath, so,
+
+    *hr
+
+    Ok, I'm back. 
+
+or other self-closing elements like '<br>' and '<wbr>'.
+
+There's an addition. '#' in the aattribute list will generate an 'id' attribute in the HTML. In the same way '.' will generate a 'class' attribute. If both are present, 'id' must come before 'class',
+
+    #div#iamwhatiam.simplelifestyle
+    I am me!
+    #
+
+generate,
+
+    <div id="iamwhatiam" class="simplelifestyle">I am me!</div>
+
+The special inline shortcut for 'span' is also dropped. Inline attribute handling is now like block opeing marks. Needs a tag or shortcut. So, if you need a 'span' shortcut, double up,
+
+    I give warning {{.warning can be risky}
+
+generates,
+
+    I give warning <span class="warning">can be risky</span>
+
+But inlines marks are usually used with custom tags,
+
+    {cite The Encyclopedia}
+
+generates,
+
+    <cite>The Encyclopedia</cite>
+
+Less elegant, but more consistent with block opening marks (the 'span'  shortcut seems to be rarely, if ever used).
+
+Note that Version 1 does not refer to app testing. It's version 1 because there was a major API change. Semantic naming.
+
+### Intro
 It would take pages of specification to cover the ins and outs of TML. But here is a short into to this reduced version.
 
 Unlike several text-markup languages, TML does not aim to be 'invisible' to readers. It aims to be robust. Two results of robustness---within it's defined scope of typeography (ok, is that a cheat?) TML never needs to be escaped, and can give useful error messages. Sub-aims are to be fast to type (you only ever use top keyboard chars for shortcut cases), and memorable (I hate wasting time relearning markup).
@@ -165,7 +219,7 @@ The tagname can be followed with a hash to start an id, then a full-stop/period 
 
 renders,
 
-    <div class="warning"><p>Lorem ipsum dolor</p></div>
+    <div id="anIdName" class="aWarningClassName"><p>Lorem ipsum dolor</p></div>
 
 That is more than enough explanation in a README devoted to a module. I give up. Try pasting this into a TML field,
 

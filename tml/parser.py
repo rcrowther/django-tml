@@ -344,7 +344,6 @@ class Parser:
         
         # tagname
         if (c == cntrlChar):
-            #print(f"found shortcurt cntrl {c}")
             tag = self.shortcutBlockTags.get(c, None)
             
             # move on
@@ -828,7 +827,6 @@ class PreCodeBlockPrismMarkData(MarkData):
                   
     def open(self, b):
         # no classname handling
-        print(f"{self.mark.tagname}")
         lang = 'none' if (self.mark.tagname == 'pre') else self.mark.tagname
         b.append('<figure><pre><code contenteditable spellcheck="false" class="language-{0}">'.format(lang))
 
