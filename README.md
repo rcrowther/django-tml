@@ -271,14 +271,18 @@ There is a special, self-closing tag mark at block level. It's an asterisk. It's
 
     **.wide(/images/tux.jpg)"The little guy"
 
-Renders unusual HTML,
+Renders unusual HTML, because this is what I use for block/structural-placed images. If you want a more conventional render, make or ask me for an override. Currently, this mark,
 
-    <figure>
-        <img  class="wide"" src="/images/tux.jpg" alt="image of tux">
+    **#tux-image.wide(/images/tux.jpg)"The little guy"
+
+generates,
+
+    <figure class="wide"">
+        <img id="tux-image"  src="/images/tux.jpg" alt="image of tux">
         <figcaption>The little guy</figcaption>
     </figure>
 
-Yes, there are several strange things about this. The image is wrapped in a FIGURE element. The text attribute is used to generate a caption. And the HTML 'alt' attribute is auto-generated from the filename.
+Yes, this is a special render. The image is wrapped in a FIGURE element. The FIGURE element takes any marked classname. The IMG takes any marked idname. Optionally, the text attribute is used to generate a caption. And the HTML 'alt' attribute is auto-generated from the filename.
 
 
 ### Tables, a quick word
