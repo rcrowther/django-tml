@@ -4,7 +4,7 @@ from django.utils.html import conditional_escape
 from collections import namedtuple
 import pathlib
 
-Mark = namedtuple('Mark', ['tagname', 'idName', 'classname', 'href', 'text'])
+Mark = namedtuple('Mark', ['tagname', 'idname', 'classname', 'href', 'text'])
 
 
 
@@ -20,11 +20,9 @@ class ParseError(Exception):
                         
 class CloseType():
     '''
-    Type of closure for vlocks.
+    Type of closure for blocks.
     Seems complex, but makes sense to humans.
     '''
-    #def __init__(closeType=None) 
-    #    self.closeType = closeType
     def __repr__(self):
         return self.__class__.__name__
 
@@ -111,16 +109,6 @@ class MarkData():
         self.open_lineno = open_lineno
         
     def open(self, b):
-        # b.append('<')
-        # b.append(self.mark.tagname)
-        # if (self.mark.idName):
-            # b.append(' id="')
-            # b.append(self.mark.idName)
-            # b.append('"')
-        # if (self.mark.classname):
-            # b.append(' class="')
-            # b.append(self.mark.classname)
-            # b.append('"')
         markToUnfinishedHTML(self.mark, b)
         b.append('>')
 
@@ -166,14 +154,6 @@ class PreMarkData(MarkData):
     def __init__(self, mark, open_lineno=None):
         super().__init__(mark, TargetedMarkClosure, '?', open_lineno)
 
-    # def open(self, b):
-        # if (self.mark.classname):
-            # b.append('<pre class="{}">'.format(self.mark.classname))
-        # else:
-            # b.append('<pre>')
-            
-    # def close(self, b):
-        # b.append('</pre>')  
 
 
 def markToUnfinishedHTML(mark, b):
@@ -186,9 +166,9 @@ def markToUnfinishedHTML(mark, b):
     '''
     b.append('<')
     b.append(mark.tagname)
-    if (mark.idName):
+    if (mark.idname):
         b.append(' id="')
-        b.append(mark.idName)
+        b.append(mark.idname)
         b.append('"')
     if (mark.classname):
         b.append(' class="')
@@ -632,8 +612,17 @@ class Parser:
         self.cpSkip()
         mark = self.parseTagAndAttributes('*')
         if (mark.tagname == 'img'):
-            b.append('<figure>')
-            markToUnfinishedHTML(mark, b)
+            b.append('<figure')
+            if (mark.classname):
+                b.append(' class="')
+                b.append(mark.classname)                
+                b.append('"')                
+            b.append('>')
+            b.append("<img")
+            if (mark.idname):
+                b.append(' id="')
+                b.append(mark.idname)
+                b.append('"')
             b.append(' src="')
             b.append(mark.href)
             b.append('" alt="image of ')
